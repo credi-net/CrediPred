@@ -5,8 +5,8 @@ import pandas as pd
 from pandas import DataFrame
 from tqdm import tqdm
 
-from tgrag.utils.logger import setup_logging
-from tgrag.utils.plot import (
+from credipred.utils.logger import setup_logging
+from credipred.utils.plot import (
     plot_joint_pr_cr_heatmap,
     plot_pr_correlation,
     plot_pr_correlation_auto_bin,
