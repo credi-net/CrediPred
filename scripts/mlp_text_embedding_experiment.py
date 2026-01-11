@@ -9,13 +9,13 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 
-from tgrag.dataset.text_csv_dataset import TextCSVDataset
-from tgrag.encoders.text_encoder import TextEncoder
-from tgrag.gnn.model import Model
-from tgrag.utils.logger import setup_logging
-from tgrag.utils.path import get_root_dir
-from tgrag.utils.plot import Scoring, plot_avg_loss_with_baseline
-from tgrag.utils.seed import seed_everything
+from credipred.dataset.text_csv_dataset import TextCSVDataset
+from credipred.encoders.text_encoder import TextEncoder
+from credipred.gnn.model import Model
+from credipred.utils.logger import setup_logging
+from credipred.utils.path import get_root_dir
+from credipred.utils.plot import Scoring, plot_avg_loss_with_baseline
+from credipred.utils.seed import seed_everything
 
 parser = argparse.ArgumentParser(
     description='MLP Text Experiment.',

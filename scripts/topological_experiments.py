@@ -7,10 +7,10 @@ from typing import DefaultDict, Dict, List, Tuple
 
 from tqdm import tqdm
 
-from tgrag.utils.logger import log_quartiles, setup_logging
-from tgrag.utils.path import get_root_dir
-from tgrag.utils.plot import plot_degree_distribution, plot_domain_scores
-from tgrag.utils.readers import load_edges, load_node_domain_map
+from credipred.utils.logger import log_quartiles, setup_logging
+from credipred.utils.path import get_root_dir
+from credipred.utils.plot import plot_degree_distribution, plot_domain_scores
+from credipred.utils.readers import load_edges, load_node_domain_map
 
 parser = argparse.ArgumentParser(
     description='Topological Experiments',
