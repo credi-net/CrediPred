@@ -1,7 +1,7 @@
 import pickle
 from typing import List, Tuple
 
-from tgrag.utils.path import get_root_dir
+from credipred.utils.path import get_root_dir
 
 
 def save_loss_results(

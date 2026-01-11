@@ -9,19 +9,19 @@ from torch_geometric.loader import NeighborLoader
 from torcheval.metrics.functional import r2_score
 from tqdm import tqdm
 
-from tgrag.dataset.temporal_dataset import TemporalDataset
-from tgrag.gnn.model import Model
-from tgrag.utils.args import DataArguments, ModelArguments
-from tgrag.utils.logger import Logger
-from tgrag.utils.plot import (
+from credipred.dataset.temporal_dataset import TemporalDataset
+from credipred.gnn.model import Model
+from credipred.utils.args import DataArguments, ModelArguments
+from credipred.utils.logger import Logger
+from credipred.utils.plot import (
     Scoring,
     mean_across_lists,
     plot_avg_loss,
     plot_avg_loss_r2,
     plot_pred_target_distributions_bin_list,
 )
-from tgrag.utils.prob import ragged_mean_by_index
-from tgrag.utils.save import save_loss_results
+from credipred.utils.prob import ragged_mean_by_index
+from credipred.utils.save import save_loss_results
 
 
 def train(

@@ -4,9 +4,9 @@ from collections import defaultdict
 from pathlib import Path
 from typing import List, Optional
 
-from tgrag.utils.checkers import check_overlaps, check_processed_labels
-from tgrag.utils.domain_handler import extract_domain
-from tgrag.utils.mergers import merge_processed_labels, merge_reg_class
+from credipred.utils.checkers import check_overlaps, check_processed_labels
+from credipred.utils.domain_handler import extract_domain
+from credipred.utils.mergers import merge_processed_labels, merge_reg_class
 
 
 def process_csv(

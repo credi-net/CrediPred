@@ -13,12 +13,12 @@ import torch
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
-from tgrag.utils.args import parse_args
-from tgrag.utils.logger import setup_logging
-from tgrag.utils.path import get_root_dir, get_scratch
-from tgrag.utils.rd_utils import table_has_data
-from tgrag.utils.seed import seed_everything
-from tgrag.utils.target_generation import strict_exact_etld1_match
+from credipred.utils.args import parse_args
+from credipred.utils.logger import setup_logging
+from credipred.utils.path import get_root_dir, get_scratch
+from credipred.utils.rd_utils import table_has_data
+from credipred.utils.seed import seed_everything
+from credipred.utils.target_generation import strict_exact_etld1_match
 
 parser = argparse.ArgumentParser(
     description='Construct Graph Relational Table.',

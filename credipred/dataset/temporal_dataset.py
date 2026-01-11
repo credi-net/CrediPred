@@ -8,13 +8,13 @@ import torch
 from sklearn.model_selection import train_test_split
 from torch_geometric.data import Data, InMemoryDataset
 
-from tgrag.encoders.encoder import Encoder
-from tgrag.utils.readers import (
+from credipred.encoders.encoder import Encoder
+from credipred.utils.readers import (
     get_full_dict,
     load_large_edge_csv,
     load_node_csv,
 )
-from tgrag.utils.target_generation import generate_exact_targets_csv
+from credipred.utils.target_generation import generate_exact_targets_csv
 
 
 class TemporalDataset(InMemoryDataset):

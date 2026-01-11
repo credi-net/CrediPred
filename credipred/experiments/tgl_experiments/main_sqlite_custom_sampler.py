@@ -10,14 +10,14 @@ from torch_geometric.data import FeatureStore, GraphStore
 from torch_geometric.loader import NeighborLoader, NodeLoader
 from tqdm import tqdm
 
-from tgrag.dataset.sampler import SQLiteNeighborSampler
-from tgrag.dataset.torch_geometric_feature_store import SQLiteFeatureStore
-from tgrag.dataset.torch_geometric_graph_store import SQLiteGraphStore
-from tgrag.gnn.model import Model
-from tgrag.utils.args import DataArguments, ModelArguments, parse_args
-from tgrag.utils.logger import Logger, setup_logging
-from tgrag.utils.path import get_root_dir, get_scratch
-from tgrag.utils.seed import seed_everything
+from credipred.dataset.sampler import SQLiteNeighborSampler
+from credipred.dataset.torch_geometric_feature_store import SQLiteFeatureStore
+from credipred.dataset.torch_geometric_graph_store import SQLiteGraphStore
+from credipred.gnn.model import Model
+from credipred.utils.args import DataArguments, ModelArguments, parse_args
+from credipred.utils.logger import Logger, setup_logging
+from credipred.utils.path import get_root_dir, get_scratch
+from credipred.utils.seed import seed_everything
 
 parser = argparse.ArgumentParser(
     description='TGL Experiments.',

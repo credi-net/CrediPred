@@ -6,8 +6,8 @@ import torch
 from torch import Tensor
 from tqdm import tqdm
 
-from tgrag.encoders.encoder import Encoder
-from tgrag.utils.domain_handler import reverse_domain
+from credipred.encoders.encoder import Encoder
+from credipred.utils.domain_handler import reverse_domain
 
 
 class TextEmbeddingEncoder(Encoder):

@@ -13,7 +13,7 @@ from pandas import DataFrame
 from scipy.ndimage import gaussian_filter
 from torch import Tensor
 
-from tgrag.utils.path import get_root_dir
+from credipred.utils.path import get_root_dir
 
 
 class Scoring(str, Enum):

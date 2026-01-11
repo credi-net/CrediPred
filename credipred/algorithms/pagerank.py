@@ -5,8 +5,8 @@ from typing import Dict, List
 import pandas as pd
 from tqdm import tqdm
 
-from tgrag.utils.logger import setup_logging
-from tgrag.utils.pagerank_utils import (
+from credipred.utils.logger import setup_logging
+from credipred.utils.pagerank_utils import (
     build_adjacency,
     check_convergence,
     preprocess_data,
@@ -15,7 +15,7 @@ from tgrag.utils.pagerank_utils import (
     test_positive_values,
     test_score_sum,
 )
-from tgrag.utils.path import get_root_dir, get_scratch
+from credipred.utils.path import get_root_dir, get_scratch
 
 parser = argparse.ArgumentParser(
     description='Generate PageRank.',

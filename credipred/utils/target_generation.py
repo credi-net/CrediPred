@@ -6,8 +6,12 @@ from typing import Dict, List, Optional, Tuple
 import tldextract
 from tqdm import tqdm
 
-from tgrag.utils.domain_handler import flip_if_needed, lookup, reverse_domain
-from tgrag.utils.readers import get_full_dict, load_target_nids
+from credipred.utils.domain_handler import (
+    flip_if_needed,
+    lookup,
+    reverse_domain,
+)
+from credipred.utils.readers import get_full_dict, load_target_nids
 
 _extract = tldextract.TLDExtract(include_psl_private_domains=True)
 MAX_DOMAINS_TO_SHOW = 50

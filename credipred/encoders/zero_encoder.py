@@ -1,7 +1,7 @@
 import torch
 from torch import Tensor
 
-from tgrag.encoders.encoder import Encoder
+from credipred.encoders.encoder import Encoder
 
 
 class ZeroEncoder(Encoder):

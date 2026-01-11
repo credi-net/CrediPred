@@ -2,7 +2,7 @@ import torch
 from pandas import Series
 from torch import Tensor
 
-from tgrag.encoders.encoder import Encoder
+from credipred.encoders.encoder import Encoder
 
 
 class TimeStampEncoder(Encoder):

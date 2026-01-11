@@ -9,7 +9,7 @@ from torch_geometric.sampler import (
 )
 from torch_geometric.sampler.base import EdgeSamplerInput
 
-from tgrag.dataset.torch_geometric_graph_store import SQLiteGraphStore
+from credipred.dataset.torch_geometric_graph_store import SQLiteGraphStore
 
 
 class SQLiteNeighborSampler(BaseSampler):

@@ -3,7 +3,7 @@ from typing import Type, Union
 import torch
 from torch import Tensor, nn
 
-from tgrag.gnn.modules import (
+from credipred.gnn.modules import (
     FFModule,
     GATModule,
     GATv2Module,

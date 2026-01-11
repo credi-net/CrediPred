@@ -4,7 +4,7 @@
 import csv
 from pathlib import Path
 
-from tgrag.utils.readers import load_domains
+from credipred.utils.readers import load_domains
 
 # For labels
 # ----------

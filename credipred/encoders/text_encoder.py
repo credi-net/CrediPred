@@ -6,7 +6,7 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 from torch import Tensor
 
-from tgrag.encoders.encoder import Encoder
+from credipred.encoders.encoder import Encoder
 
 
 class TextEncoder(Encoder):

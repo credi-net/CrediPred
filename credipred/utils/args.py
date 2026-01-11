@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Tuple, Union
 import yaml
 from hf_argparser import HfArgumentParser
 
-from tgrag.utils.path import get_root_dir, get_scratch
+from credipred.utils.path import get_root_dir, get_scratch
 
 
 class Normalization(str, Enum):

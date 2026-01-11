@@ -6,7 +6,7 @@ from torch import Tensor
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
-from tgrag.encoders.encoder import Encoder
+from credipred.encoders.encoder import Encoder
 
 
 class TextCSVDataset(Dataset):
