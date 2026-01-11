@@ -1,5 +1,5 @@
 [project]
-name = "tgrag"
+name = "credipred"
 version = "0.1.0"
 description = "Temporal Graph Analysis on Large-Scale Web Data"
 readme = "README.md"
@@ -30,7 +30,7 @@ dependencies = [
 ]
 
 [tool.flit.module]
-name = "tgrag"
+name = "credipred"
 
 [build-system]
 requires = ["flit_core >=3.2,<4"]
@@ -55,8 +55,8 @@ analytics = [
 ]
 
 [tool.mypy]
-files = ['tgrag']
-exclude = '^tgrag/cc-scripts/'
+files = ['credipred']
+exclude = '^credipred/cc-scripts/'
 install_types = true
 non_interactive = true
 ignore_missing_imports = true
@@ -105,7 +105,7 @@ markers = [
 
 
 [tool.coverage.run]
-source = ["tgrag"]
+source = ["credipred"]
 
 [tool.coverage.report]
 exclude_lines = [
