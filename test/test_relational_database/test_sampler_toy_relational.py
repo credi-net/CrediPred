@@ -11,18 +11,6 @@ from torch_geometric.loader import NodeLoader
 
 @pytest.fixture(scope='module')
 def sqlite_graph_and_feature_store(tmp_path_factory):
-    """Creates a realistic SQLite graph + feature store with proper remapping:
-
-    domain table:
-      row_id  INTEGER PRIMARY KEY AUTOINCREMENT   ← internal row index
-      id      INTEGER                             ← external domain id
-      ts      INTEGER
-      x       BLOB
-      y       REAL
-
-    Edges reference domain.id (external ids), not row ids.
-    FeatureStore internally indexes on row_id.
-    """
     np.random.seed(42)
 
     db_dir = tmp_path_factory.mktemp('data')
