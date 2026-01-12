@@ -24,7 +24,7 @@ def run(cmd: List[str], check: bool = True) -> subprocess.CompletedProcess[str]:
     p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if check and p.returncode != 0:
         raise RuntimeError(
-            f"cmd failed: {' '.join(cmd)}\nstdout:\n{p.stdout}\nstderr:\n{p.stderr}"
+            f'cmd failed: {" ".join(cmd)}\nstdout:\n{p.stdout}\nstderr:\n{p.stderr}'
         )
     return p
 
@@ -91,4 +91,4 @@ def run_ext_sort(
         )
         _, err = p.communicate()
         if p.returncode != 0:
-            raise RuntimeError(f"sort failed: {' '.join(cmd)}\n{err}")
+            raise RuntimeError(f'sort failed: {" ".join(cmd)}\n{err}')
