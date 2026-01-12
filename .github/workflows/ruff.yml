@@ -4,6 +4,8 @@ on: # yamllint disable-line rule:truthy
   push:
     branches:
       - master
+    paths_ignore:
+      - 'test/**'
   pull_request:
 
 concurrency:
