@@ -1,5 +1,4 @@
 import torch
-
 from tgrag.encoders.zero_encoder import ZeroEncoder
 
 

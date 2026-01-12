@@ -1,5 +1,4 @@
 import torch
-
 from tgrag.encoders.rni_encoding import RNIEncoder
 
 

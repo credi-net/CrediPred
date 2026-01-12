@@ -56,7 +56,7 @@ analytics = [
 
 [tool.mypy]
 files = ['credipred']
-exclude = '^credipred/cc-scripts/'
+exclude = ['^credipred/cc-scripts/', '^test/']
 install_types = true
 non_interactive = true
 ignore_missing_imports = true
@@ -71,6 +71,9 @@ disallow_incomplete_defs = true
 multi_line_output = 3
 include_trailing_comma = true
 skip = [".gitignore", "__init__.py"]
+
+[tool.ruff]
+exclude = ['test']
 
 [tool.ruff.lint]
 select = [

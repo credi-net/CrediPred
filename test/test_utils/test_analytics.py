@@ -2,7 +2,6 @@ import gzip
 from pathlib import Path
 
 import pytest
-
 from tgrag.utils.analytics import (
     compute_density,
     count_lines,

@@ -4,7 +4,6 @@ from pathlib import Path
 import numpy as np
 import pytest
 import torch
-
 from tgrag.dataset.torch_geometric_feature_store import SQLiteFeatureStore
 
 

@@ -3,10 +3,9 @@ import sqlite3
 import numpy as np
 import pytest
 import torch
-from torch_geometric.loader import NeighborLoader
-
 from tgrag.dataset.torch_geometric_feature_store import SQLiteFeatureStore
 from tgrag.dataset.torch_geometric_graph_store import SQLiteGraphStore
+from torch_geometric.loader import NeighborLoader
 
 
 @pytest.fixture(scope='module')
@@ -64,7 +63,6 @@ def sqlite_graph_and_feature_store(tmp_path_factory):
 
 def test_initialization(sqlite_graph_and_feature_store) -> None:
     g, f = sqlite_graph_and_feature_store
-    
 
 
 @pytest.mark.integration
@@ -76,7 +74,9 @@ def test_correct_next_iter(sqlite_graph_and_feature_store) -> None:
     print(f'num_neighbors: {num_neighbors}')
     loader = NeighborLoader(
         data=(feature_store, graph_store),
-        num_neighbors={key.edge_type: [1, 1, 1] for key in graph_store.get_all_edge_attrs()},
+        num_neighbors={
+            key.edge_type: [1, 1, 1] for key in graph_store.get_all_edge_attrs()
+        },
         batch_size=1,
         input_nodes=('domain', torch.arange(2)),
         input_time=None,
@@ -85,4 +85,3 @@ def test_correct_next_iter(sqlite_graph_and_feature_store) -> None:
 
     for batch in loader:
         print(batch)
-

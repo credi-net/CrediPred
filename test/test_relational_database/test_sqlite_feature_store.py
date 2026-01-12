@@ -3,9 +3,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from torch_geometric.data.feature_store import TensorAttr
-
 from tgrag.dataset.torch_geometric_feature_store import SQLiteFeatureStore
+from torch_geometric.data.feature_store import TensorAttr
 
 
 @pytest.fixture
