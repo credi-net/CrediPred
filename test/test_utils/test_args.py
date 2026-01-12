@@ -1,13 +1,12 @@
 import pytest
 import yaml
-
 from tgrag.utils.args import ExperimentArguments, MetaArguments, parse_args
 from tgrag.utils.path import get_root_dir
 
 
 @pytest.fixture
 def experiment_yaml(tmp_path):
-    root = get_root_dir()
+    get_root_dir()
     config = {
         'MetaArguments': {
             'log_file_path': 'logs/exp.log',

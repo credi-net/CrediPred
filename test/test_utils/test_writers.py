@@ -2,7 +2,6 @@ import gzip
 from pathlib import Path
 
 import pytest
-
 from tgrag.utils.writers import (
     build_from_BCC,
     compute_degrees,

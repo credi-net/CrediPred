@@ -3,7 +3,6 @@ from pathlib import Path
 import pandas as pd
 import pytest
 import torch
-
 from tgrag.encoders.time_encoder import TimeStampEncoder
 
 
@@ -14,7 +13,7 @@ ie.pdconstruction,84505,20250525
 ie.peikko,84506,20250525
 ie.pembrokewanderers,84507,20250525
 """
-    file = tmp_path / "nodes.csv"
+    file = tmp_path / 'nodes.csv'
     file.write_text(content)
     df = pd.read_csv(file)
     return df

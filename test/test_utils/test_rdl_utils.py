@@ -2,7 +2,6 @@ import sqlite3
 
 import numpy as np
 import pytest
-
 from tgrag.utils.rd_utils import is_db_empty, table_has_data
 
 

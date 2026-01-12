@@ -2,7 +2,7 @@ ci:
   autofix_prs: true
   autoupdate_schedule: weekly
 
-exclude: '^credipred/cc-scripts/'
+exclude: ('^credipred/cc-scripts/|test/')
 
 
 repos:
@@ -80,3 +80,4 @@ repos:
     hooks:
       - id: mypy
         name: mypy
+        exclude: '^test/'

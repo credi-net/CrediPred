@@ -3,11 +3,10 @@ import sqlite3
 import numpy as np
 import pytest
 import torch
-from torch_geometric.loader import NodeLoader
-
 from tgrag.dataset.sampler import SQLiteNeighborSampler
 from tgrag.dataset.torch_geometric_feature_store import SQLiteFeatureStore
 from tgrag.dataset.torch_geometric_graph_store import SQLiteGraphStore
+from torch_geometric.loader import NodeLoader
 
 
 @pytest.fixture(scope='module')

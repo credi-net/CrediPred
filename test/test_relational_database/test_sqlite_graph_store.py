@@ -1,9 +1,8 @@
 import sqlite3
-
 import time
+
 import pytest
 import torch
-
 from tgrag.dataset.torch_geometric_graph_store import (
     EdgeLayout,
     Rel,
@@ -125,12 +124,12 @@ def test_sqlite_graph_store_interface(sqlite_graph_store):
     e = sqlite_graph_store[edge_attr]
     assert torch.equal(e[0], edge_index[0])
     assert torch.equal(e[1], edge_index[1])
-    
-def test_graph_coo_access_efficiency(sqlite_graph_store):
 
+
+def test_graph_coo_access_efficiency(sqlite_graph_store):
     start = time.perf_counter()
-    tensor = sqlite_graph_store[('domain', 'LINKS_TO', 'domain'), 'coo']
+    sqlite_graph_store[('domain', 'LINKS_TO', 'domain'), 'coo']
     elapsed = time.perf_counter() - start
 
-    assert elapsed < 0.0001, f"Random access too slow: {elapsed:.3f}s"
+    assert elapsed < 0.0001, f'Random access too slow: {elapsed:.3f}s'
     print(elapsed)
