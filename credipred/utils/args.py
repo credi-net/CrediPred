@@ -75,6 +75,7 @@ class MetaArguments:
             'pr_val': 'NORM',
             'hc_val': 'NORM',
             'text': 'TEXT',
+            'pre': 'PRE',
         },
         metadata={
             'help': 'Node encoder dictionary defines which column is encoded by which encoder. Key: column, Value: Encoder'
