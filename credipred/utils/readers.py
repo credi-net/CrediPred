@@ -177,6 +177,7 @@ def load_node_csv(
         (torch.Tensor or None, dict, pandas.Index)
             Feature tensor (or None), mapping from node id to index, and row index.
     """
+    scratch = get_scratch()
     dfs = []
 
     with pd.read_csv(path, index_col=index_col, chunksize=chunk_size) as reader:
@@ -200,6 +201,7 @@ def load_node_csv(
                         get_embeddings_lookup(
                             folder_name='data/dec_2024_domain/embeddings/'
                         ),
+                        scratch / 'data' / 'dec_2024_domain' / 'embeddings',
                     )
                 )
             else:
