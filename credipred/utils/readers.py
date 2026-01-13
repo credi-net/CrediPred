@@ -199,7 +199,7 @@ def load_node_csv(
                     encoder(
                         df.index,
                         get_embeddings_lookup(
-                            folder_name='data/dec_2024_domain/embeddings/'
+                            folder_name='data/dec_2024_domain/embeddings/dec2024_wetcontent_domains_index.pkl'
                         ),
                         scratch / 'data' / 'dec_2024_domain' / 'embeddings',
                     )
