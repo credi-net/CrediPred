@@ -13,7 +13,7 @@ import torch
 from tqdm import tqdm
 
 from credipred.utils.domain_handler import normalize_domain
-from credipred.utils.path import get_root_dir
+from credipred.utils.path import get_root_dir, get_scratch
 
 # For graphs
 # ----------
@@ -194,7 +194,14 @@ def load_node_csv(
             if key in df.columns:
                 xs.append(encoder(df[key].values))
             elif key == 'pre':
-                xs.append(encoder(df['domain'], get_seed_embeddings()))
+                xs.append(
+                    encoder(
+                        df['domain'],
+                        get_embeddings_lookup(
+                            folder_name='data/dec_2024_domain/embeddings/'
+                        ),
+                    )
+                )
             else:
                 xs.append(encoder(len(df)))
 
@@ -312,25 +319,22 @@ def load_large_edge_csv(
     return edge_index, edge_attr
 
 
-def get_seed_embeddings(
-    file_name: str = 'data/dqr/labeled_11k_domainname_emb/labeled_11k_domainName_emb.pkl',
-) -> Dict[str, torch.Tensor]:
-    """Load precomputed domain embeddings.
-
-    Parameters:
-        None
+def get_embeddings_lookup(
+    folder_name: str,
+) -> Dict[str, str]:
+    """Load and aggregate domain embeddings lookup table.
 
     Returns:
-        dict[str, torch.Tensor]
-            Mapping from domain string to embedding tensor.
+        Dict[str, str]: Mapping from domain to .pkl file name.
     """
-    root = get_root_dir()
-    path = Path(root) / file_name
+    root = get_scratch()
+    folder_path = Path(root) / folder_name
 
-    with open(path, 'rb') as f:
-        data = pickle.load(f)
+    dict = {}
+    with open(folder_path, 'rb') as file:
+        dict = pickle.load(file)
 
-    return {k: torch.tensor(v, dtype=torch.float32) for k, v in data.items()}
+    return dict
 
 
 # For labels
