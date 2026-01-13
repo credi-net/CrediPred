@@ -1,7 +1,12 @@
-# CrediGraph
+<div align="center">
+  
+# CrediPred
 
-<img src="img/logo_silver.png" alt="CrediGraph Logo" style="width: 300px; height: auto;" />
+Model architectures based on graph neural networks to learn credibility signals on billion-scale webgraphs. 
 
+<img src="img/credipred.png" alt="CrediGraph Logo" style="width: 100px; height: auto;" />
+
+</div>
 
 ## Getting Started
 
