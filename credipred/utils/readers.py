@@ -197,7 +197,7 @@ def load_node_csv(
             elif key == 'pre':
                 xs.append(
                     encoder(
-                        df['domain'],
+                        df.index,
                         get_embeddings_lookup(
                             folder_name='data/dec_2024_domain/embeddings/'
                         ),
