@@ -43,7 +43,7 @@ class TextEmbeddingEncoder(Encoder):
                     if len(embedding_dict_cache) >= self.max_cache_size:
                         embedding_dict_cache.popitem(last=False)
 
-                    path = folder_location / wet_file_name
+                    path = folder_location / wet_file_name / '.pkl'
                     with open(path, 'rb') as file:
                         embedding_dict_cache[wet_file_name] = pickle.load(file)
 
