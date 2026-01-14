@@ -15,7 +15,7 @@ from credipred.utils.domain_handler import reverse_domain
 
 
 class TextEmbeddingEncoder(Encoder):
-    def __init__(self, default_dimension: int, max_cache_size: int = 6):
+    def __init__(self, default_dimension: int, max_cache_size: int = 10):
         self.default_dimension = default_dimension
         self.max_cache_size = max_cache_size
 
@@ -40,12 +40,12 @@ class TextEmbeddingEncoder(Encoder):
                 if wet_file_name in embedding_dict_cache:
                     embedding_dict_cache.move_to_end(wet_file_name)
                 else:
-                    logging.info('Updating cache')
                     if len(embedding_dict_cache) >= self.max_cache_size:
                         embedding_dict_cache.popitem(last=False)
 
                     path = folder_location / (wet_file_name + '.pkl')
                     with open(path, 'rb') as file:
+                        logging.info('Pushing to cache')
                         embedding_dict_cache[wet_file_name] = pickle.load(file)
 
                 entries = embedding_dict_cache[wet_file_name][rev_domain_name]
