@@ -40,6 +40,7 @@ class TextEmbeddingEncoder(Encoder):
                 if wet_file_name in embedding_dict_cache:
                     embedding_dict_cache.move_to_end(wet_file_name)
                 else:
+                    logging.info('Updating cache')
                     if len(embedding_dict_cache) >= self.max_cache_size:
                         embedding_dict_cache.popitem(last=False)
 
