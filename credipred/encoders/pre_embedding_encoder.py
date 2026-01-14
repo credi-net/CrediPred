@@ -15,7 +15,7 @@ from credipred.utils.domain_handler import reverse_domain
 
 
 class TextEmbeddingEncoder(Encoder):
-    def __init__(self, default_dimension: int, max_cache_size: int = 4):
+    def __init__(self, default_dimension: int, max_cache_size: int = 6):
         self.default_dimension = default_dimension
         self.max_cache_size = max_cache_size
 
