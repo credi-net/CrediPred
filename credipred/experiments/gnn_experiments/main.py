@@ -58,6 +58,8 @@ def main() -> None:
 
     logging.info(f'Encoding Dictionary: {encoding_dict}')
 
+    logging.info(f'force_undirected: {meta_args.force_undirected}')
+
     dataset = TemporalDataset(
         root=f'{root}/data/',
         node_file=cast(str, meta_args.node_file),
