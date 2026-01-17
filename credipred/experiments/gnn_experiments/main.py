@@ -67,6 +67,7 @@ def main() -> None:
         edge_src_col=meta_args.edge_src_col,
         edge_dst_col=meta_args.edge_dst_col,
         index_col=meta_args.index_col,
+        force_undirected=meta_args.force_undirected,
         encoding=encoding_dict,
         seed=meta_args.global_seed,
         processed_dir=cast(str, meta_args.processed_location),
