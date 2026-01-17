@@ -7,6 +7,7 @@ import pandas as pd
 import torch
 from sklearn.model_selection import train_test_split
 from torch_geometric.data import Data, InMemoryDataset
+from torch_geometric.utils import to_undirected
 
 from credipred.encoders.encoder import Encoder
 from credipred.utils.readers import (
@@ -38,6 +39,7 @@ class TemporalDataset(InMemoryDataset):
         edge_dst_col: str = 'dst',
         index_col: int = 1,
         index_name: str = 'node_id',
+        force_undirected: bool = False,
         encoding: Optional[Dict[str, Encoder]] = None,
         transform: Optional[Callable] = None,
         pre_transform: Optional[Callable] = None,
@@ -88,6 +90,7 @@ class TemporalDataset(InMemoryDataset):
         self.edge_dst_col = edge_dst_col
         self.index_col = index_col
         self.index_name = index_name
+        self.force_undirected = force_undirected
         self.target_index_name = target_index_name
         self.target_index_col = target_index_col
         self.encoding = encoding
@@ -183,6 +186,10 @@ class TemporalDataset(InMemoryDataset):
             encoders=None,
         )
         logging.info('***Edge Matrix Constructed***')
+
+        if self.force_undirected:
+            logging.info('Converting edge index to undirected.')
+            edge_index = to_undirected(edge_index)
 
         data = Data(x=x_full, y=score, edge_index=edge_index, edge_attr=edge_attr)
 
