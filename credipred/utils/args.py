@@ -57,6 +57,10 @@ class MetaArguments:
         default='dst',
         metadata={'help': 'The destination column name in the edge file.'},
     )
+    force_undirected: bool = field(
+        default=False,
+        metadata={'help': 'Forces the adjacency matrix to be undirected.'},
+    )
     index_col: int = field(
         default=1,
         metadata={
