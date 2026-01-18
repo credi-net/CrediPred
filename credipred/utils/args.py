@@ -61,6 +61,10 @@ class MetaArguments:
         default=False,
         metadata={'help': 'Forces the adjacency matrix to be undirected.'},
     )
+    switch_source: bool = field(
+        default=False,
+        metadata={'help': 'Reverse src,dst order.'},
+    )
     index_col: int = field(
         default=1,
         metadata={

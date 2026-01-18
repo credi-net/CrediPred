@@ -70,6 +70,7 @@ def main() -> None:
         edge_dst_col=meta_args.edge_dst_col,
         index_col=meta_args.index_col,
         force_undirected=meta_args.force_undirected,
+        switch_source=meta_args.switch_source,
         encoding=encoding_dict,
         seed=meta_args.global_seed,
         processed_dir=cast(str, meta_args.processed_location),

@@ -40,6 +40,7 @@ class TemporalDataset(InMemoryDataset):
         index_col: int = 1,
         index_name: str = 'node_id',
         force_undirected: bool = False,
+        switch_source: bool = False,
         encoding: Optional[Dict[str, Encoder]] = None,
         transform: Optional[Callable] = None,
         pre_transform: Optional[Callable] = None,
@@ -91,6 +92,7 @@ class TemporalDataset(InMemoryDataset):
         self.index_col = index_col
         self.index_name = index_name
         self.force_undirected = force_undirected
+        self.switch_source = switch_source
         self.target_index_name = target_index_name
         self.target_index_col = target_index_col
         self.encoding = encoding
@@ -182,6 +184,7 @@ class TemporalDataset(InMemoryDataset):
             path=edge_path,
             src_index_col=self.edge_src_col,
             dst_index_col=self.edge_dst_col,
+            switch_source=self.switch_source,
             mapping=mapping,
             encoders=None,
         )
