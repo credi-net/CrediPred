@@ -267,6 +267,7 @@ def load_large_edge_csv(
     src_index_col: str,
     dst_index_col: str,
     mapping: Dict,
+    switch_source: bool = False,
     encoders: Dict | None = None,
     chunk_size: int = 500_000,
 ) -> Tuple[torch.Tensor, torch.Tensor | None]:
@@ -314,7 +315,10 @@ def load_large_edge_csv(
 
     src = torch.cat(src_chunks)
     dst = torch.cat(dst_chunks)
-    edge_index = torch.stack([src, dst], dim=0)
+    if switch_source:
+        edge_index = torch.stack([dst, src], dim=0)
+    else:
+        edge_index = torch.stack([src, dst], dim=0)
 
     edge_attr = torch.cat(attr_chunks) if attr_chunks else None
 
