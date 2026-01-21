@@ -44,7 +44,9 @@ def run_get_test_predictions(
     logging.info(f'Device found: {device}')
     weight_path = weight_directory / f'{model_arguments.model}' / 'best_model.pt'
     idx_split = dataset.get_idx_split()
-    indices = torch.cat(idx_split['train'], idx_split['valid'], idx_split['test'])
+    indices = torch.cat(
+        (idx_split['train'], idx_split['valid'], idx_split['test']), dim=0
+    )
     logging.info(f'Length of testing indices: {len(indices)}')
     logging.info('Mapping returned.')
     model = Model(
