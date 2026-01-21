@@ -425,10 +425,14 @@ def get_full_dict() -> Dict[str, int]:
     result: Dict[str, int] = {}
 
     with path.open('r', encoding='utf-8') as f:
-        next(f)
-        for line in f:
-            parts = line.strip().split(',')
-            result[parts[0]] = int(parts[1])
+        reader = csv.DictReader(f)
+        for row in reader:
+            domain = row['domain']
+            label = row['weak_label']
+            if label and label.strip():
+                result[domain] = int(label)
+            else:
+                continue
 
     return result
 
