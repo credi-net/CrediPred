@@ -15,6 +15,9 @@ from credipred.encoders.zero_encoder import ZeroEncoder
 from credipred.experiments.gnn_experiments.gnn_experiment import (
     run_gnn_baseline,
 )
+from credipred.experiments.gnn_experiments.gnn_experiment_binary_labels import (
+    run_binary_class_gnn_baseline,
+)
 from credipred.utils.args import parse_args
 from credipred.utils.logger import setup_logging
 from credipred.utils.path import get_root_dir
@@ -108,12 +111,25 @@ def main() -> None:
 
     for experiment, experiment_arg in experiment_args.exp_args.items():
         logging.info(f'\n**Running**: {experiment}')
-        run_gnn_baseline(
-            experiment_arg.data_args,
-            experiment_arg.model_args,
-            root / cast(str, meta_args.weights_directory) / f'{meta_args.target_col}',
-            dataset,
-        )
+        if not args.binary_classification:
+            run_gnn_baseline(
+                experiment_arg.data_args,
+                experiment_arg.model_args,
+                root
+                / cast(str, meta_args.weights_directory)
+                / f'{meta_args.target_col}',
+                dataset,
+            )
+        else:
+            run_binary_class_gnn_baseline(
+                experiment_arg.data_args,
+                experiment_arg.model_args,
+                root
+                / cast(str, meta_args.weights_directory)
+                / f'{meta_args.target_col}',
+                dataset,
+            )
+
     results = load_all_loss_tuples()
     logging.info('Constructing Plots, across models')
     plot_metric_across_models(results)
