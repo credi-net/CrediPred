@@ -389,7 +389,7 @@ def _csv_rows(path: Path) -> Iterable[dict[str, str]]:
         yield from csv.DictReader(f)
 
 
-def get_full_dict() -> Dict[str, List[float]]:
+def get_dqr_dict() -> Dict[str, List[float]]:
     """Load domain rating metrics from the DQR dataset.
 
     Parameters:
@@ -407,6 +407,28 @@ def get_full_dict() -> Dict[str, List[float]]:
         for line in f:
             parts = line.strip().split(',')
             result[parts[0]] = [float(x) for x in parts[1:]]
+
+    return result
+
+
+def get_full_dict() -> Dict[str, int]:
+    """Load domain rating metrics from the DQR dataset.
+
+    Parameters:
+        None
+
+    Returns:
+        dict[str, list[float]]
+            Mapping from domain string to a list of numeric metric values.
+    """
+    path = Path(get_root_dir()) / 'data' / 'labels.csv'
+    result: Dict[str, int] = {}
+
+    with path.open('r', encoding='utf-8') as f:
+        next(f)
+        for line in f:
+            parts = line.strip().split(',')
+            result[parts[0]] = int(parts[1])
 
     return result
 
