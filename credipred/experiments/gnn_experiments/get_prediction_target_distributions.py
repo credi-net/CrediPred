@@ -43,8 +43,9 @@ def run_get_test_predictions(
     device = torch.device(device)
     logging.info(f'Device found: {device}')
     weight_path = weight_directory / f'{model_arguments.model}' / 'best_model.pt'
-    test_idx = dataset.get_idx_split()['test']
-    logging.info(f'Length of testing indices: {len(test_idx)}')
+    idx_split = dataset.get_idx_split()
+    indices = torch.cat(idx_split['train'], idx_split['valid'], idx_split['test'])
+    logging.info(f'Length of testing indices: {len(indices)}')
     logging.info('Mapping returned.')
     model = Model(
         model_name=model_arguments.model,
@@ -59,9 +60,9 @@ def run_get_test_predictions(
     logging.info('Model Loaded.')
     model.eval()
 
-    test_targets = dataset[0].y[test_idx]
-    logging.info(f'Target values: {test_targets}')
-    indices = torch.tensor(test_idx, dtype=torch.long)
+    targets = dataset[0].y[indices]
+    logging.info(f'Target values: {targets}')
+    indices = torch.tensor(indices, dtype=torch.long)
 
     loader = NeighborLoader(
         data,
@@ -82,9 +83,9 @@ def run_get_test_predictions(
             seed_nodes = batch.n_id[: batch.batch_size]
             all_preds[seed_nodes] = preds[: batch.batch_size].cpu()
 
-    test_predictions = all_preds[indices]
+    predictions = all_preds[indices]
 
-    abs_errors = (test_predictions - test_targets).abs()
+    abs_errors = (predictions - targets).abs()
 
     min_error = abs_errors.min().item()
     max_error = abs_errors.max().item()
@@ -93,14 +94,14 @@ def run_get_test_predictions(
     logging.info(f'Max Absolute Error: {max_error:.4f}')
 
     plot_pred_target_distributions_histogram(
-        preds=test_predictions,
-        targets=test_targets,
+        preds=predictions,
+        targets=targets,
         model_name=model_arguments.model,
         target=target,
     )
     plot_regression_scatter_tensor(
-        preds=test_predictions,
-        targets=test_targets,
+        preds=predictions,
+        targets=targets,
         model_name=model_arguments.model,
         target=target,
     )
