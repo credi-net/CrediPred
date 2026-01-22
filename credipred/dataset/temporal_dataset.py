@@ -421,9 +421,12 @@ class TemporalBinaryDataset(InMemoryDataset):
         df_target = pd.concat([df_target, filler])
         df_target.sort_index(inplace=True)
         logging.info(f'Size of filled target dataframe: {df_target.shape}')
+
+        target_series = pd.to_numeric(df_target[self.target_col], errors='coerce')
+        score_values = target_series.fillna(-1).astype('int32').values
         score = torch.tensor(
-            df_target[self.target_col].astype('int32').fillna(-1).values,
-            dtype=torch.float,
+            score_values,
+            dtype=torch.long,
         )
         logging.info(f'Size of score vector: {score.size()}')
 
