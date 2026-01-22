@@ -65,6 +65,10 @@ class MetaArguments:
         default=False,
         metadata={'help': 'Reverse src,dst order.'},
     )
+    embedding_index: str = field(
+        default='dec2024_wetcontent_domains_index.pkl',
+        metadata={'help': 'Specifies the domain index look-up file name.'},
+    )
     index_col: int = field(
         default=1,
         metadata={
