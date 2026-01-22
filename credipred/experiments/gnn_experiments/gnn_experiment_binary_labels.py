@@ -32,8 +32,6 @@ def train_(
         optimizer.zero_grad()
         batch = batch.to(device)
         preds = model(batch.x, batch.edge_index)
-        print(preds.size())
-        preds = preds.squeeze()
         targets = batch.y
         train_mask = batch.train_mask
         if train_mask.sum() == 0:
@@ -73,7 +71,7 @@ def evaluate(
     all_targets = []
     for batch in loader:
         batch = batch.to(device)
-        preds = model(batch.x, batch.edge_index).squeeze()
+        preds = model(batch.x, batch.edge_index)
         targets = batch.y
         n = targets.size(0)
         mask = getattr(batch, mask_name)
