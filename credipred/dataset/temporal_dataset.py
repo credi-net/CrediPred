@@ -406,7 +406,6 @@ class TemporalBinaryDataset(InMemoryDataset):
         # mapping_index = [mapping[domain.strip()] for domain in df_target['domain']]
         mapping_index = []
         for domain in df_target['domain']:
-            logging.info(f'Domain: {domain}')
             try:
                 mapping_index.append(mapping[domain.strip()])
             except KeyError:
