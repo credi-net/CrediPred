@@ -37,7 +37,7 @@ class LabelPredictor(nn.Module):
         x = self.lin_node(x)
         x = x.relu()
         x = self.out(x)
-        return log_softmax(x, dim=0)
+        return log_softmax(x, dim=-1)
 
 
 class ResidualModuleWrapper(nn.Module):
