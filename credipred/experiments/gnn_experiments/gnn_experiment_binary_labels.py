@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 from typing import List, Tuple
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 from torch_geometric.loader import NeighborLoader
@@ -30,13 +31,15 @@ def train_(
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
         optimizer.zero_grad()
         batch = batch.to(device)
-        preds = model(batch.x, batch.edge_index).squeeze()
+        preds = model(batch.x, batch.edge_index)
+        print(preds.size())
+        preds = preds.squeeze()
         targets = batch.y
         train_mask = batch.train_mask
         if train_mask.sum() == 0:
             continue
 
-        loss = F.cross_entropy(preds[train_mask], targets[train_mask])
+        loss = F.nll_loss(preds[train_mask], targets[train_mask])
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
@@ -72,17 +75,17 @@ def evaluate(
         batch = batch.to(device)
         preds = model(batch.x, batch.edge_index).squeeze()
         targets = batch.y
+        n = targets.size(0)
         mask = getattr(batch, mask_name)
         if mask.sum() == 0:
             continue
         # MEAN: 0.546
-        mean_preds = torch.zeros(batch.y[mask].size()).to(device)
-        mean_preds[:, 1] = 10.0  # High logit for class 1
-        mean_preds[:, 0] = -10.0  # Low logit for class 0
-        random_preds = torch.randn(batch.y[mask].size()).to(device)
-        loss = F.cross_entropy(preds[mask], targets[mask])
-        mean_loss = F.cross_entropy(mean_preds, targets[mask])
-        random_loss = F.cross_entropy(random_preds, targets[mask])
+        mean_preds = torch.full((n, 2), -100.0).to(device)
+        mean_preds[:, 1] = 0.0  # High logit for class 1
+        random_preds = torch.randn((n, 2), np.log(0.5)).to(device)
+        loss = F.nll_loss(preds[mask], targets[mask])
+        mean_loss = F.nll_loss(mean_preds, targets[mask])
+        random_loss = F.nll_loss(random_preds, targets[mask])
 
         total_loss += loss.item()
         total_mean_loss += mean_loss.item()
