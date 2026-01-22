@@ -403,12 +403,14 @@ class TemporalBinaryDataset(InMemoryDataset):
         df_target = pd.read_csv(target_path)
         logging.info(f'Size of target dataframe: {df_target.shape}')
 
-        logging.info(f'Mapping: {mapping}')
         # mapping_index = [mapping[domain.strip()] for domain in df_target['domain']]
         mapping_index = []
         for domain in df_target['domain']:
             logging.info(f'Domain: {domain}')
-            mapping_index.append(mapping[domain.strip()])
+            try:
+                mapping_index.append(mapping[domain.strip()])
+            except KeyError:
+                logging.info(f'CRITICAL: {domain.strip()} is not found in the mapping.')
 
         df_target.index = mapping_index
         logging.info(f'Size of mapped target dataframe: {df_target.shape}')
