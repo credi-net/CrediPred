@@ -403,7 +403,13 @@ class TemporalBinaryDataset(InMemoryDataset):
         df_target = pd.read_csv(target_path)
         logging.info(f'Size of target dataframe: {df_target.shape}')
 
-        mapping_index = [mapping[domain.strip()] for domain in df_target['domain']]
+        logging.info(f'Mapping: {mapping}')
+        # mapping_index = [mapping[domain.strip()] for domain in df_target['domain']]
+        mapping_index = []
+        for domain in df_target['domain']:
+            logging.info(f'Domain: {domain}')
+            mapping_index.append(mapping[domain.strip()])
+
         df_target.index = mapping_index
         logging.info(f'Size of mapped target dataframe: {df_target.shape}')
 
