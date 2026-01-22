@@ -70,11 +70,11 @@ def evaluate(
         batch = batch.to(device)
         preds = model(batch.x, batch.edge_index)
         targets = batch.y
-        n = targets.size(0)
         mask = getattr(batch, mask_name)
         if mask.sum() == 0:
             continue
         # MEAN: 0.546
+        n = mask.size(0)
         mean_preds = torch.full((n, 2), -100.0).to(device)
         mean_preds[:, 1] = 0.0  # High logit for class 1
         loss = F.nll_loss(preds[mask], targets[mask])
