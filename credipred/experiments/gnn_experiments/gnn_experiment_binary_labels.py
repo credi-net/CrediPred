@@ -2,7 +2,6 @@ import logging
 from pathlib import Path
 from typing import List, Tuple
 
-import numpy as np
 import torch
 import torch.nn.functional as F
 from torch_geometric.loader import NeighborLoader
@@ -63,11 +62,9 @@ def evaluate(
     device = next(model.parameters()).device
     total_loss = 0
     total_mean_loss = 0
-    total_random_loss = 0
     total_samples = 0
     all_preds = []
     all_mean_preds = []
-    all_random_preds = []
     all_targets = []
     for batch in loader:
         batch = batch.to(device)
@@ -80,31 +77,28 @@ def evaluate(
         # MEAN: 0.546
         mean_preds = torch.full((n, 2), -100.0).to(device)
         mean_preds[:, 1] = 0.0  # High logit for class 1
-        random_preds = torch.randn((n, 2), np.log(0.5)).to(device)
         loss = F.nll_loss(preds[mask], targets[mask])
         mean_loss = F.nll_loss(mean_preds, targets[mask])
-        random_loss = F.nll_loss(random_preds, targets[mask])
 
         total_loss += loss.item()
         total_mean_loss += mean_loss.item()
-        total_random_loss += random_loss.item()
         total_samples += mask.sum().item()
 
         all_preds.append(preds[mask].argmax(dim=-1))
         all_mean_preds.append(mean_preds.argmax(dim=-1))
-        all_random_preds.append(random_preds.argmax(dim=-1))
         all_targets.append(targets[mask])
 
     avg_ce = total_loss / total_samples
     total_mean_loss / total_samples
-    total_random_loss / total_samples
 
     # Calculate accuracy
     y_pred = torch.cat(all_preds)
     y_true = torch.cat(all_targets)
     acc = (y_pred == y_true).float().mean().item()
     acc_mean = (torch.cat(all_mean_preds) == y_true).float().mean().item()
-    acc_random = (torch.cat(all_random_preds) == y_true).float().mean().item()
+
+    random_choices = torch.randint(0, 2, (y_true.size(0),), device=device)
+    acc_random = (random_choices == y_true).float().mean().item()
 
     return (avg_ce, acc, acc_mean, acc_random)
 
