@@ -88,7 +88,7 @@ def evaluate(
         total_samples += mask.sum().item()
 
         all_preds.append(preds[mask].argmax(dim=-1))
-        all_mean_preds.append(mean_preds.argmax(dim=-1))
+        all_mean_preds.append(mean_preds[mask].argmax(dim=-1))
         all_targets.append(targets[mask])
 
     avg_ce = total_loss / total_samples
