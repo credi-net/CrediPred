@@ -228,6 +228,10 @@ def generate_exact_binary_targets_csv(
 
             metrics = labels_domains[etld1]
             if etld1 not in chosen:
+                logging.info('START:')
+                logging.info(f'Raw_domain: {raw_domain}:')
+                logging.info(f'etld1: {etld1}')
+                logging.info(f'etld1 reverse: {reverse_domain(etld1)}')
                 chosen[etld1] = metrics
 
     with open(targets_csv_out, 'w', newline='', encoding='utf-8') as csvfile:
