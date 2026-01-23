@@ -59,7 +59,9 @@ class Logger(object):
     def __init__(self, runs: int):
         self.results: List[Any] = [[] for _ in range(runs)]
 
-    def add_result(self, run: int, result: Tuple[float, float, float, float]) -> None:
+    def add_result(
+        self, run: int, result: Tuple[float, float, float, float, float]
+    ) -> None:
         """Append a result tuple to a given run.
 
         Parameters:
@@ -68,7 +70,7 @@ class Logger(object):
             result : Tuple[float, float, float, float]
                 Tuple of metrics for one step/epoch.
         """
-        assert len(result) == 4
+        assert len(result) == 5
         self.results[run].append(result)
 
     def get_statistics(
@@ -104,6 +106,7 @@ class Logger(object):
                 val_selection_train = r[r[:, 1].argmin(), 0].item()
                 val_selection_test = r[r[:, 1].argmin(), 2].item()
                 val_selection_baseline = r[r[:, 1].argmin(), 3].item()
+                val_selection_random = r[r[:, 1].argmin(), 4].item()
                 final_train = r[-1, 0].item()
                 final_valid = r[-1, 1].item()
                 final_test = r[-1, 2].item()
@@ -118,6 +121,7 @@ class Logger(object):
                         val_selection_train,
                         val_selection_test,
                         val_selection_baseline,
+                        val_selection_random,
                         final_train,
                         final_valid,
                         final_test,
@@ -151,23 +155,27 @@ class Logger(object):
             lines.append(
                 f'Mean {metric.value} @ Best Validation: {r.mean():.4f} ± {r.std():.4f}'
             )
-
             r = best_result[:, 6]
-            lines.append(f'Final Train {metric.value}: {r.mean():.4f}')
+            lines.append(
+                f'Random {metric.value} @ Best Validation: {r.mean():.4f} ± {r.std():.4f}'
+            )
+
             r = best_result[:, 7]
-            lines.append(f'Final Valid {metric.value}: {r.mean():.4f}')
+            lines.append(f'Final Train {metric.value}: {r.mean():.4f}')
             r = best_result[:, 8]
+            lines.append(f'Final Valid {metric.value}: {r.mean():.4f}')
+            r = best_result[:, 9]
             lines.append(f'Final Test {metric.value}: {r.mean():.4f}')
 
-            r = best_result[:, 9]
+            r = best_result[:, 10]
             lines.append(
                 f'Maximum Train {metric.value}: {r.mean():.4f} ± {r.std():.4f}'
             )
-            r = best_result[:, 10]
+            r = best_result[:, 11]
             lines.append(
                 f'Maximum Valid {metric.value}: {r.mean():.4f} ± {r.std():.4f}'
             )
-            r = best_result[:, 11]
+            r = best_result[:, 12]
             lines.append(f'Maximum Test {metric.value}: {r.mean():.4f} ± {r.std():.4f}')
 
         return '\n'.join(lines)
