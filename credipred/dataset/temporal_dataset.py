@@ -459,14 +459,13 @@ class TemporalBinaryDataset(InMemoryDataset):
 
         data.labeled_mask = labeled_mask.detach().clone().bool()
 
-        quantiles = np.quantile(labeled_scores, [1 / 3, 2 / 3])
-        quartile_labels = np.digitize(labeled_scores, bins=quantiles)
+        stratification_labels = labeled_scores
 
         train_idx, temp_idx, _, quartile_labels_temp = train_test_split(
             labeled_idx,
-            quartile_labels,
+            stratification_labels,
             train_size=0.6,
-            stratify=quartile_labels,
+            stratify=stratification_labels,
             random_state=self.seed,
         )
 
@@ -500,6 +499,8 @@ class TemporalBinaryDataset(InMemoryDataset):
 
         assert data.edge_index.max() < data.x.size(0), 'edge_index out of bounds'
 
+        self.verify_stratification(data=data, dict_split=data.idx_dict)
+
         torch.save(mapping, self.processed_dir + '/mapping.pt')
         torch.save(self.collate([data]), self.processed_paths[0])
 
@@ -524,3 +525,20 @@ class TemporalBinaryDataset(InMemoryDataset):
         if not hasattr(self, '_mapping'):
             self._mapping = torch.load(self.processed_dir + '/mapping.pt')
         return self._mapping
+
+    def verify_stratification(
+        self, data: Data, dict_split: Dict[str, torch.Tensor]
+    ) -> None:
+        logging.info('Label Balance Verification')
+        for name, indices in dict_split.items():
+            split_labels = data.y[indices]
+
+            total = split_labels.size(0)
+            pos_count = (split_labels == 1).sum().item()
+            neg_count = (split_labels == 0).sum().item()
+
+            pos_ratio = pos_count / total if total > 0 else 0
+
+            logging.info(
+                f'{name:5}: Total = {total:4} | Pos={pos_count:3} | Neg={neg_count:3} | Ratio={pos_ratio:.2%}'
+            )

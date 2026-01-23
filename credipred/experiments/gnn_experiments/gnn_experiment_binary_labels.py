@@ -31,7 +31,6 @@ def train_(
         optimizer.zero_grad()
         batch = batch.to(device)
         preds = model(batch.x, batch.edge_index)
-        logging.info(f'Pred: {preds[0:10]}')
         targets = batch.y
         train_mask = batch.train_mask
         if train_mask.sum() == 0:
