@@ -206,6 +206,7 @@ def run_binary_class_gnn_baseline(
                     valid_acc,
                     test_acc,
                     valid_mean_acc,
+                    test_random_acc,
                 ),
             )
             if valid_ce_loss < global_best_val_loss:
