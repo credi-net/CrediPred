@@ -156,7 +156,8 @@ def _encode_columns(df: pd.DataFrame, encoders: Dict) -> torch.Tensor:
 
 
 def load_node_csv(
-    path: str,
+    path: Path,
+    embedding_index: str,
     index_col: int,
     encoders: Dict | None = None,
     chunk_size: int = 500_000,
@@ -195,13 +196,14 @@ def load_node_csv(
             if key in df.columns:
                 xs.append(encoder(df[key].values))
             elif key == 'pre':
+                embedding_lookup = path.parent / 'embeddings'
                 xs.append(
                     encoder(
                         df.index,
                         get_embeddings_lookup(
-                            folder_name='data/dec_2024_domain/embeddings/dec2024_wetcontent_domains_index.pkl'
+                            folder_name=embedding_lookup / embedding_index
                         ),
-                        scratch / 'data' / 'dec_2024_domain' / 'embeddings',
+                        scratch / embedding_lookup,
                     )
                 )
             else:
@@ -326,7 +328,7 @@ def load_large_edge_csv(
 
 
 def get_embeddings_lookup(
-    folder_name: str,
+    folder_name: Path,
 ) -> Dict[str, str]:
     """Load and aggregate domain embeddings lookup table.
 

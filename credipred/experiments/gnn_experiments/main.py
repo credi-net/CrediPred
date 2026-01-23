@@ -69,6 +69,7 @@ def main() -> None:
         edge_src_col=meta_args.edge_src_col,
         edge_dst_col=meta_args.edge_dst_col,
         index_col=meta_args.index_col,
+        embedding_index=meta_args.embedding_index,
         force_undirected=meta_args.force_undirected,
         switch_source=meta_args.switch_source,
         encoding=encoding_dict,

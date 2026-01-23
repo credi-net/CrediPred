@@ -1,5 +1,6 @@
 import logging
 import os
+from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
 import numpy as np
@@ -39,6 +40,7 @@ class TemporalDataset(InMemoryDataset):
         edge_dst_col: str = 'dst',
         index_col: int = 1,
         index_name: str = 'node_id',
+        embedding_index: str = '',
         force_undirected: bool = False,
         switch_source: bool = False,
         encoding: Optional[Dict[str, Encoder]] = None,
@@ -91,6 +93,7 @@ class TemporalDataset(InMemoryDataset):
         self.edge_dst_col = edge_dst_col
         self.index_col = index_col
         self.index_name = index_name
+        self.embedding_index = embedding_index
         self.force_undirected = force_undirected
         self.switch_source = switch_source
         self.target_index_name = target_index_name
@@ -140,7 +143,8 @@ class TemporalDataset(InMemoryDataset):
 
         logging.info('***Constructing Feature Matrix***')
         x_full, mapping, full_index = load_node_csv(
-            path=node_path,
+            path=Path(node_path),
+            embedding_index=self.embedding_index,
             index_col=0,
             encoders=self.encoding,
         )
