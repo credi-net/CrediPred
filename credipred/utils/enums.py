@@ -5,6 +5,7 @@ class Scoring(str, Enum):
     mse = 'MSE'
     r2 = 'R2'
     mae = 'MAE'
+    acc = 'Accuracy'
 
 
 class Metric(str, Enum):

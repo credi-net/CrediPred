@@ -221,11 +221,11 @@ def run_binary_class_gnn_baseline(
     torch.save(best_state_dict, best_model_path)
     logging.info(f'Model: {model_arguments} weights saved to: {best_model_path}')
     logging.info('*** Statistics ***')
-    logging.info(logger.get_statistics(metric=Metric.acc))
-    logging.info(logger.get_avg_statistics(metric=Metric.acc))
+    logging.info(logger.get_statistics(metric=Metric.acc, higher_is_better=True))
+    logging.info(logger.get_avg_statistics(metric=Metric.acc, higher_is_better=True))
     logging.info('Constructing plots')
     plot_avg_loss(
-        loss_tuple_run_mse, model_arguments.model, Scoring.mae, 'loss_plot.png'
+        loss_tuple_run_mse, model_arguments.model, Scoring.acc, 'loss_plot.png'
     )
     logging.info('Saving pkl of results')
     save_loss_results(

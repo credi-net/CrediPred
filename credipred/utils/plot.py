@@ -161,7 +161,7 @@ def plot_avg_loss(
     score: Scoring,
     save_filename: str = 'loss_plot.png',
 ) -> None:
-    """Plots the averaged MSE loss over trials for train, validation, and test sets with std dev bands."""
+    """Plots the averaged Score over trials for train, validation, and test sets with std dev bands."""
     num_epochs = len(loss_tuple_run[0])
 
     data = np.array(loss_tuple_run)  # shape: (num_trials, num_epochs, 3)

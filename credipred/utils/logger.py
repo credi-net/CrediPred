@@ -74,7 +74,10 @@ class Logger(object):
         self.results[run].append(result)
 
     def get_statistics(
-        self, run: int | None = None, metric: Metric = Metric.loss
+        self,
+        run: int | None = None,
+        metric: Metric = Metric.loss,
+        higher_is_better: bool = False,
     ) -> str:
         """Return formatted statistics for one run or all runs.
 
@@ -89,12 +92,15 @@ class Logger(object):
         lines = []
         if run is not None:
             result = torch.tensor(self.results[run])
-            argmin = result[:, 1].argmin().item()
+            if higher_is_better:
+                optimal = result[:, 1].argmax().item()
+            else:
+                optimal = result[:, 1].argmin().item()
             lines.append(f'Run {run + 1:02d}:')
             lines.append(f'Lowest Train {metric.value}: {result[:, 0].min():.4f}')
             lines.append(f'Lowest Valid {metric.value}: {result[:, 1].min():.4f}')
-            lines.append(f'  Final Train {metric.value}: {result[argmin, 0]:.4f}')
-            lines.append(f'   Final Test {metric.value}: {result[argmin, 2]:.4f}')
+            lines.append(f'  Final Train {metric.value}: {result[optimal, 0]:.4f}')
+            lines.append(f'   Final Test {metric.value}: {result[optimal, 2]:.4f}')
         else:
             result = torch.tensor(self.results)
 
@@ -103,10 +109,17 @@ class Logger(object):
                 train = r[:, 0].min().item()
                 valid = r[:, 1].min().item()
                 test = r[:, 2].min().item()
-                val_selection_train = r[r[:, 1].argmin(), 0].item()
-                val_selection_test = r[r[:, 1].argmin(), 2].item()
-                val_selection_baseline = r[r[:, 1].argmin(), 3].item()
-                val_selection_random = r[r[:, 1].argmin(), 4].item()
+                if higher_is_better:
+                    val_selection_train = r[r[:, 1].argmax(), 0].item()
+                    val_selection_test = r[r[:, 1].argmax(), 2].item()
+                    val_selection_baseline = r[r[:, 1].argmax(), 3].item()
+                    val_selection_random = r[r[:, 1].argmax(), 4].item()
+                else:
+                    val_selection_train = r[r[:, 1].argmin(), 0].item()
+                    val_selection_test = r[r[:, 1].argmin(), 2].item()
+                    val_selection_baseline = r[r[:, 1].argmin(), 3].item()
+                    val_selection_random = r[r[:, 1].argmin(), 4].item()
+
                 final_train = r[-1, 0].item()
                 final_valid = r[-1, 1].item()
                 final_test = r[-1, 2].item()
@@ -180,7 +193,9 @@ class Logger(object):
 
         return '\n'.join(lines)
 
-    def get_avg_statistics(self, metric: Metric = Metric.loss) -> str:
+    def get_avg_statistics(
+        self, metric: Metric = Metric.loss, higher_is_better: bool = False
+    ) -> str:
         """Return formatted statistics averaged across runs per epoch.
 
         Returns:
@@ -199,7 +214,10 @@ class Logger(object):
         )
         train_std_curve, val_std_curve, test_std_curve = std[:, 0], std[:, 1], std[:, 2]
 
-        best_val_idx = val_mean_curve.argmin()
+        if higher_is_better:
+            best_val_idx = val_mean_curve.argmax()
+        else:
+            best_val_idx = val_mean_curve.argmin()
 
         final_train = train_mean_curve[-1].item()
         final_train_std = train_std_curve[-1].item()
@@ -208,12 +226,21 @@ class Logger(object):
         final_test = test_mean_curve[-1].item()
         final_test_std = test_std_curve[-1].item()
 
-        best_train = train_mean_curve.min().item()
-        best_train_std = train_std_curve[train_mean_curve.argmin()].item()
+        if higher_is_better:
+            best_train = train_mean_curve.max().item()
+            best_train_std = train_std_curve[train_mean_curve.argmax()].item()
+        else:
+            best_train = train_mean_curve.min().item()
+            best_train_std = train_std_curve[train_mean_curve.argmin()].item()
+
         best_val = val_mean_curve[best_val_idx].item()
         best_val_std = val_std_curve[best_val_idx].item()
-        best_test = test_mean_curve.min().item()
-        best_test_std = test_std_curve[test_mean_curve.argmin()].item()
+        if higher_is_better:
+            best_test = test_mean_curve.max().item()
+            best_test_std = test_std_curve[test_mean_curve.argmax()].item()
+        else:
+            best_test = test_mean_curve.min().item()
+            best_test_std = test_std_curve[test_mean_curve.argmin()].item()
 
         train_at_val_best = train_mean_curve[best_val_idx].item()
         train_at_val_best_std = train_std_curve[best_val_idx].item()
