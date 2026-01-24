@@ -431,9 +431,36 @@ class TemporalBinaryDataset(InMemoryDataset):
         logging.info(f'Size of score vector: {score.size()}')
 
         labeled_mask = score != -1.0
-
         labeled_idx = torch.nonzero(torch.tensor(labeled_mask), as_tuple=True)[0]
         labeled_scores = score[labeled_idx].squeeze().numpy()
+
+        # Naive Undersampling Logic
+        pos_indices = labeled_idx[labeled_scores == 1]
+        neg_indices = labeled_idx[labeled_scores == 0]
+
+        n_pos = pos_indices.size(0)
+        n_neg = neg_indices.size(0)
+
+        logging.info(
+            f'Pre-undersample balance: Positive={n_pos}, Negative={n_neg}, ratio={n_pos / (n_neg + n_pos)}:2f'
+        )
+
+        if n_pos > n_neg:
+            logging.info(f'Downsampling positives from {n_pos} to {n_neg}')
+
+            perm = torch.randperm(
+                n_pos, generator=torch.Generator().manual_seed(self.seed)
+            )
+
+            discard_indices = pos_indices[perm[n_neg:]]
+
+            score[discard_indices] = -1.0
+            labeled_mask[discard_indices] = False
+
+            labeled_idx = torch.nonzero(labeled_mask, as_tuple=True)[0]
+            labeled_scores = score[labeled_idx].squeeze().numpy()
+
+            logging.info(f'New balanced label count: {labeled_scores.size}')
 
         if labeled_scores.size == 0:
             raise ValueError(
