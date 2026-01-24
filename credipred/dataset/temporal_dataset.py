@@ -268,6 +268,32 @@ class TemporalDataset(InMemoryDataset):
             self._mapping = torch.load(self.processed_dir + '/mapping.pt')
         return self._mapping
 
+    def verify_stratification(self, data: Data) -> None:
+        """Log the distribution of regression scores across train/valid/test splits."""
+        splits = data.get_idx_split()
+        bins = [0, 0.1, 0.2, 0.5, 0.8, 1.0]
+        bin_labels = ['<0.1', '0.1-0.2', '0.2-0.5', '0.5-0.8', '0.8-1.0']
+
+        logging.info('Score distribution verification')
+
+        summary_data = []
+        for name, indices in splits.items():
+            split_scores = data.y[indices].numpy()
+            total_nodes = split_scores.size
+
+            counts = np.histogram(split_scores, bins=bins)[0]
+
+            precentages = (counts / total_nodes) * 100 if total_nodes > 0 else counts
+
+            row = {'Split': name, 'Total': total_nodes}
+            for label, pct in zip(bin_labels, precentages):
+                row[label] = f'{pct:.1f}'
+
+            summary_data.append(row)
+
+        df_summary = pd.DataFrame(summary_data)
+        logging.info(f'\n{df_summary.to_string(index=False)}')
+
 
 class TemporalBinaryDataset(InMemoryDataset):
     """Graph dataset with temporal / versioned preprocessing and binary target generation.
