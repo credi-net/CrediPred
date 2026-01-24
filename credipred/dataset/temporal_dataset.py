@@ -243,6 +243,8 @@ class TemporalDataset(InMemoryDataset):
 
         assert data.edge_index.max() < data.x.size(0), 'edge_index out of bounds'
 
+        self.verify_stratification(data=data)
+
         torch.save(mapping, self.processed_dir + '/mapping.pt')
         torch.save(self.collate([data]), self.processed_paths[0])
 
