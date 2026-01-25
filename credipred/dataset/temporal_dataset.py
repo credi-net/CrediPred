@@ -272,7 +272,7 @@ class TemporalDataset(InMemoryDataset):
 
     def verify_stratification(self, data: Data) -> None:
         """Log the distribution of regression scores across train/valid/test splits."""
-        splits = data.get_idx_split()
+        splits = data.idx_dict
         bins = [0, 0.1, 0.2, 0.5, 0.8, 1.0]
         bin_labels = ['<0.1', '0.1-0.2', '0.2-0.5', '0.5-0.8', '0.8-1.0']
 
