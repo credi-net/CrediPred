@@ -16,3 +16,10 @@ class Metric(str, Enum):
 class Label(str, Enum):
     pc1 = 'PC1'
     mbfc = 'MBFC-BIAS'
+
+
+class ConvolutionEnums(str, Enum):
+    gcn = 'GCN'
+    sage = 'SAGE'
+    gat = 'GAT'
+    gatv2 = 'GATv2'

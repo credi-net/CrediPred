@@ -405,6 +405,19 @@ class TemporalBinaryDataset(InMemoryDataset):
     def download(self) -> None:
         """No-op download hook (raw data must already exist locally)."""
 
+    def save_split(self, mapping: Dict, idx_dict: Dict) -> None:
+        reverse_mapping = {v: k for k, v in mapping.items()}
+        lookup_tensor = torch.tensor(
+            [reverse_mapping[i] for i in range(len(reverse_mapping))]
+        )
+        for name, idx in idx_dict.items():
+            values = lookup_tensor[idx]
+            df_split_to_save = pd.DataFrame({f'Domains_{name}': values})
+            df_split_to_save.to_parquet(
+                self.processed_dir, engine='pyarrow', index=False
+            )
+        logging.info(f'Saved train/valid/test splits at: {self.processed_dir}')
+
     def process(self) -> None:
         """Generate targets, construct graph tensors, and create train/valid/test splits."""
         node_path = os.path.join(self.raw_dir, self.node_file)
@@ -458,43 +471,6 @@ class TemporalBinaryDataset(InMemoryDataset):
         )
         logging.info(f'Size of score vector: {score.size()}')
 
-        labeled_mask = score != -1.0
-        labeled_idx = torch.nonzero(torch.tensor(labeled_mask), as_tuple=True)[0]
-        labeled_scores = score[labeled_idx].squeeze().numpy()
-
-        # Naive Undersampling Logic
-        pos_indices = labeled_idx[labeled_scores == 1]
-        neg_indices = labeled_idx[labeled_scores == 0]
-
-        n_pos = pos_indices.size(0)
-        n_neg = neg_indices.size(0)
-
-        logging.info(
-            f'Pre-undersample balance: Positive={n_pos}, Negative={n_neg}, ratio={n_pos / (n_neg + n_pos)}:2f'
-        )
-
-        if n_pos > n_neg:
-            logging.info(f'Downsampling positives from {n_pos} to {n_neg}')
-
-            perm = torch.randperm(
-                n_pos, generator=torch.Generator().manual_seed(self.seed)
-            )
-
-            discard_indices = pos_indices[perm[n_neg:]]
-
-            score[discard_indices] = -1.0
-            labeled_mask[discard_indices] = False
-
-            labeled_idx = torch.nonzero(labeled_mask, as_tuple=True)[0]
-            labeled_scores = score[labeled_idx].squeeze().numpy()
-
-            logging.info(f'New balanced label count: {labeled_scores.size}')
-
-        if labeled_scores.size == 0:
-            raise ValueError(
-                f"No labeled nodes found in target column '{self.target_col}'"
-            )
-
         logging.info('***Constructing Edge Matrix***')
         edge_index, edge_attr = load_large_edge_csv(
             path=edge_path,
@@ -512,30 +488,64 @@ class TemporalBinaryDataset(InMemoryDataset):
 
         data = Data(x=x_full, y=score, edge_index=edge_index, edge_attr=edge_attr)
 
+        labeled_mask = score != -1.0
+        labeled_idx = torch.nonzero(torch.tensor(labeled_mask), as_tuple=True)[0]
+        labeled_scores = score[labeled_idx].squeeze().numpy()
+
+        if labeled_scores.size == 0:
+            raise ValueError(
+                f"No labeled nodes found in target column '{self.target_col}'"
+            )
+
         data.labeled_mask = labeled_mask.detach().clone().bool()
 
-        stratification_labels = labeled_scores
-
-        train_idx, temp_idx, _, quartile_labels_temp = train_test_split(
+        train_idx, temp_idx, _, labels_temp = train_test_split(
             labeled_idx,
-            stratification_labels,
+            labeled_scores,
             train_size=0.6,
-            stratify=stratification_labels,
+            stratify=labeled_scores,
             random_state=self.seed,
         )
 
         valid_idx, test_idx = train_test_split(
             temp_idx,
             train_size=0.5,
-            stratify=quartile_labels_temp,
+            stratify=labels_temp,
             random_state=self.seed,
         )
 
+        # Naive Undersampling Logic
+        def downsample_to_balanced(
+            indices: List, global_scores: torch.Tensor
+        ) -> torch.Tensor:
+            idx_tensor = torch.as_tensor(indices)
+            global_scores[idx_tensor]
+            pos_idx = labeled_idx[labeled_scores == 1]
+            neg_idx = labeled_idx[labeled_scores == 0]
+
+            n_pos = pos_idx.size(0)
+            n_neg = neg_idx.size(0)
+
+            logging.info(
+                f'Pre-undersample balance: Positive={n_pos}, Negative={n_neg}, ratio={n_pos / (n_neg + n_pos)}:2f'
+            )
+
+            if n_pos > n_neg:
+                logging.info(f'Downsampling positives from {n_pos} to {n_neg}')
+
+                perm = torch.randperm(
+                    n_pos, generator=torch.Generator().manual_seed(self.seed)
+                )
+
+                keep_pos_idx = pos_idx[perm[:n_neg]]
+                return torch.cat[[neg_idx, keep_pos_idx]]
+
         train_idx = torch.as_tensor(train_idx)
         logging.info(f'Train size: {train_idx.size()}')
-        valid_idx = torch.as_tensor(valid_idx)
+        logging.info('Balancing Valid and TEst sets to 50/50')
+        valid_idx = downsample_to_balanced(valid_idx, score)
         logging.info(f'Valid size: {valid_idx.size()}')
-        test_idx = torch.as_tensor(test_idx)
+        test_idx = downsample_to_balanced(test_idx, score)
         logging.info(f'Test size: {test_idx.size()}')
 
         # Set global indices for our transductive nodes:
@@ -552,9 +562,10 @@ class TemporalBinaryDataset(InMemoryDataset):
             'test': test_idx,
         }
 
-        assert data.edge_index.max() < data.x.size(0), 'edge_index out of bounds'
-
         self.verify_stratification(data=data, dict_split=data.idx_dict)
+        self.save_split(mapping, data.idx_dict)
+
+        assert data.edge_index.max() < data.x.size(0), 'edge_index out of bounds'
 
         torch.save(mapping, self.processed_dir + '/mapping.pt')
         torch.save(self.collate([data]), self.processed_paths[0])
