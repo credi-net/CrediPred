@@ -505,6 +505,7 @@ class TemporalBinaryDataset(InMemoryDataset):
             stratify=labeled_scores,
             random_state=self.seed,
         )
+        logging.info(f'Pre-downsampled size valid: {len(train_idx)}')
 
         valid_idx, test_idx = train_test_split(
             temp_idx,
@@ -512,6 +513,8 @@ class TemporalBinaryDataset(InMemoryDataset):
             stratify=labels_temp,
             random_state=self.seed,
         )
+        logging.info(f'Pre-downsampled size valid: {len(valid_idx)}')
+        logging.info(f'Pre-downsampled size valid: {len(test_idx)}')
 
         # Naive Undersampling Logic
         def downsample_to_balanced(
