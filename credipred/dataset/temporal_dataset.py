@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -519,7 +519,7 @@ class TemporalBinaryDataset(InMemoryDataset):
         # Naive Undersampling Logic
         def downsample_to_balanced(
             indices: List, global_scores: torch.Tensor
-        ) -> torch.Tensor:
+        ) -> Tuple[torch.Tensor, torch.Tensor]:
             idx_tensor = torch.as_tensor(indices)
             subset_scores = global_scores[idx_tensor]
             pos_idx = idx_tensor[subset_scores == 1]
@@ -539,15 +539,20 @@ class TemporalBinaryDataset(InMemoryDataset):
             )
 
             keep_pos_idx = pos_idx[perm[:n_neg]]
-            return torch.cat([neg_idx, keep_pos_idx])
+            removed_pos_idx = pos_idx[perm[n_neg:]]
+            kept_indices = torch.cat([neg_idx, keep_pos_idx])
+            return kept_indices, removed_pos_idx
+
+        logging.info('Balancing Valid and Test sets to 50/50')
+        valid_idx, valid_removed = downsample_to_balanced(valid_idx, score)
+        logging.info(f'Valid size: {valid_idx.size()}')
+        test_idx, test_removed = downsample_to_balanced(test_idx, score)
+        logging.info(f'Test size: {test_idx.size()}')
 
         train_idx = torch.as_tensor(train_idx)
+        train_idx = torch.cat([train_idx, valid_removed, test_removed])
+        train_idx = torch.as_tensor(train_idx)
         logging.info(f'Train size: {train_idx.size()}')
-        logging.info('Balancing Valid and TEst sets to 50/50')
-        valid_idx = downsample_to_balanced(valid_idx, score)
-        logging.info(f'Valid size: {valid_idx.size()}')
-        test_idx = downsample_to_balanced(test_idx, score)
-        logging.info(f'Test size: {test_idx.size()}')
 
         logging.info('***Constructing Edge Matrix***')
         edge_index, edge_attr = load_large_edge_csv(
