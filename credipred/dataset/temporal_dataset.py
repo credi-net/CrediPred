@@ -537,9 +537,9 @@ class TemporalBinaryDataset(InMemoryDataset):
             indices: List, global_scores: torch.Tensor
         ) -> torch.Tensor:
             idx_tensor = torch.as_tensor(indices)
-            global_scores[idx_tensor]
-            pos_idx = labeled_idx[labeled_scores == 1]
-            neg_idx = labeled_idx[labeled_scores == 0]
+            subset_scores = global_scores[idx_tensor]
+            pos_idx = idx_tensor[subset_scores == 1]
+            neg_idx = idx_tensor[subset_scores == 0]
 
             n_pos = pos_idx.size(0)
             n_neg = neg_idx.size(0)
