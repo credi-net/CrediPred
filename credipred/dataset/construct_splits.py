@@ -5,6 +5,7 @@ from typing import Dict, List
 
 import pandas as pd
 from sklearn.model_selection import train_test_split
+from tqdm import tqdm
 
 from credipred.utils.logger import setup_logging
 from credipred.utils.path import get_scratch
@@ -24,7 +25,7 @@ def generate_splits(
 ) -> None:
     labeled_data = [
         {'domain': d, 'label': domains_to_binary[d]}
-        for d in all_domains
+        for d in tqdm(all_domains, desc='domains')
         if d in domains_to_binary
     ]
 
@@ -62,13 +63,15 @@ def main() -> None:
 
     all_unique_domains = set()
 
-    for path_name in paths:
+    for path_name in tqdm(paths, desc=f'Vertices'):
         node_csv = scratch / 'data' / path_name / 'vertices.csv'
         if node_csv.exists():
             logging.info(f'Reading {node_csv}...')
             # Reading only the 'domain' column to save memory
             df_chunk = pd.read_csv(node_csv, usecols=['domain'])
+            logging.info('Loaded csv')
             all_unique_domains.update(df_chunk['domain'].tolist())
+            logging.info(f'Added csv: {node_csv} to set.')
         else:
             logging.warning(f'File not found: {node_csv}')
 
