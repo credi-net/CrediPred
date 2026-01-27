@@ -428,7 +428,7 @@ def get_full_dict() -> Dict[str, int]:
         reader = csv.DictReader(f)
         for row in reader:
             domain = row['domain']
-            label = row['weak_label']
+            label = row['reliability']
             if label and label.strip():
                 result[domain] = int(label)
             else:
