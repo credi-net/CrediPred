@@ -27,16 +27,15 @@ def generate_splits(
     labeled_data = []
     for domain in tqdm(all_domains, desc='Intersecting with Labels'):
         try:
-            if domain in domains_to_binary:
-                raw_domain = domain.strip()
-                if not raw_domain:
-                    continue
-                etld1 = strict_exact_etld1_match(raw_domain, domains_to_binary)
-                if etld1 is None:
-                    continue
-                metrics = domains_to_binary[etld1]
-                domain_to_label = {'domain': raw_domain, 'label': metrics}
-                labeled_data.append(domain_to_label)
+            raw_domain = domain.strip()
+            if not raw_domain:
+                continue
+            etld1 = strict_exact_etld1_match(raw_domain, domains_to_binary)
+            if etld1 is None:
+                continue
+            metrics = domains_to_binary[etld1]
+            domain_to_label = {'domain': raw_domain, 'label': metrics}
+            labeled_data.append(domain_to_label)
         except KeyError:
             logging.info(f'Critical {domain.strip()} is not found in mapping.')
 
