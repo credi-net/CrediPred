@@ -29,6 +29,8 @@ def generate_splits(
         if d in domains_to_binary
     ]
 
+    logging.info(f'Number of labeled domains: {len(labeled_data)}')
+
     df = pd.DataFrame(labeled_data).drop_duplicates(subset=['domain'])
     logging.info(f'Total unique labeled domains found: {len(df)}')
 
