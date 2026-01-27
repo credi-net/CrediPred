@@ -25,13 +25,17 @@ def generate_splits(
 ) -> None:
     labeled_data = [
         {'domain': d, 'label': domains_to_binary[d]}
-        for d in tqdm(all_domains, desc='domains')
+        for d in tqdm(all_domains, desc='Intersecting with labels')
         if d in domains_to_binary
     ]
 
+    if not labeled_data:
+        logging.error('Labeled data is empty. No intersection found')
+        return
+
     logging.info(f'Number of labeled domains: {len(labeled_data)}')
 
-    df = pd.DataFrame(labeled_data).drop_duplicates(subset=['domain'])
+    df = pd.DataFrame(labeled_data)
     logging.info(f'Total unique labeled domains found: {len(df)}')
 
     train_df, temp_df = train_test_split(
