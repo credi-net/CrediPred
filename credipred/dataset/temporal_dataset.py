@@ -530,15 +530,14 @@ class TemporalBinaryDataset(InMemoryDataset):
                 f'Pre-undersample balance: Positive={n_pos}, Negative={n_neg}, ratio={n_pos / (n_neg + n_pos)}:2f'
             )
 
-            if n_pos > n_neg:
-                logging.info(f'Downsampling positives from {n_pos} to {n_neg}')
+            logging.info(f'Downsampling positives from {n_pos} to {n_neg}')
 
-                perm = torch.randperm(
-                    n_pos, generator=torch.Generator().manual_seed(self.seed)
-                )
+            perm = torch.randperm(
+                n_pos, generator=torch.Generator().manual_seed(self.seed)
+            )
 
-                keep_pos_idx = pos_idx[perm[:n_neg]]
-                return torch.cat([neg_idx, keep_pos_idx])
+            keep_pos_idx = pos_idx[perm[:n_neg]]
+            return torch.cat([neg_idx, keep_pos_idx])
 
         train_idx = torch.as_tensor(train_idx)
         logging.info(f'Train size: {train_idx.size()}')
