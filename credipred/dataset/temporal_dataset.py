@@ -538,7 +538,7 @@ class TemporalBinaryDataset(InMemoryDataset):
                 )
 
                 keep_pos_idx = pos_idx[perm[:n_neg]]
-                return torch.cat[[neg_idx, keep_pos_idx]]
+                return torch.cat([neg_idx, keep_pos_idx])
 
         train_idx = torch.as_tensor(train_idx)
         logging.info(f'Train size: {train_idx.size()}')
