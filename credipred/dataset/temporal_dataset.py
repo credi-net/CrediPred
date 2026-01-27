@@ -489,23 +489,6 @@ class TemporalBinaryDataset(InMemoryDataset):
         )
         logging.info(f'Size of score vector: {score.size()}')
 
-        logging.info('***Constructing Edge Matrix***')
-        edge_index, edge_attr = load_large_edge_csv(
-            path=edge_path,
-            src_index_col=self.edge_src_col,
-            dst_index_col=self.edge_dst_col,
-            switch_source=self.switch_source,
-            mapping=mapping,
-            encoders=None,
-        )
-        logging.info('***Edge Matrix Constructed***')
-
-        if self.force_undirected:
-            logging.info('Converting edge index to undirected.')
-            edge_index = to_undirected(edge_index)
-
-        data = Data(x=x_full, y=score, edge_index=edge_index, edge_attr=edge_attr)
-
         labeled_mask = score != -1.0
         labeled_idx = torch.nonzero(torch.tensor(labeled_mask), as_tuple=True)[0]
         labeled_scores = score[labeled_idx].squeeze().numpy()
@@ -514,8 +497,6 @@ class TemporalBinaryDataset(InMemoryDataset):
             raise ValueError(
                 f"No labeled nodes found in target column '{self.target_col}'"
             )
-
-        data.labeled_mask = labeled_mask.detach().clone().bool()
 
         train_idx, temp_idx, _, labels_temp = train_test_split(
             labeled_idx,
@@ -565,6 +546,23 @@ class TemporalBinaryDataset(InMemoryDataset):
         test_idx = downsample_to_balanced(test_idx, score)
         logging.info(f'Test size: {test_idx.size()}')
 
+        logging.info('***Constructing Edge Matrix***')
+        edge_index, edge_attr = load_large_edge_csv(
+            path=edge_path,
+            src_index_col=self.edge_src_col,
+            dst_index_col=self.edge_dst_col,
+            switch_source=self.switch_source,
+            mapping=mapping,
+            encoders=None,
+        )
+        logging.info('***Edge Matrix Constructed***')
+
+        if self.force_undirected:
+            logging.info('Converting edge index to undirected.')
+            edge_index = to_undirected(edge_index)
+
+        data = Data(x=x_full, y=score, edge_index=edge_index, edge_attr=edge_attr)
+        data.labeled_mask = labeled_mask.detach().clone().bool()
         # Set global indices for our transductive nodes:
         num_nodes = data.num_nodes
         data.train_mask = torch.zeros(num_nodes, dtype=torch.bool)
