@@ -1,6 +1,7 @@
 from typing import Type, Union
 
 from torch import Tensor, nn
+from torch.nn.functional import log_softmax
 from torch_geometric.nn import GATConv, GATv2Conv, GCNConv, GINConv, SAGEConv
 
 NormalizationType = Union[Type[nn.Identity], Type[nn.LayerNorm], Type[nn.BatchNorm1d]]
@@ -21,6 +22,22 @@ class NodePredictor(nn.Module):
         x = self.out(x)
         x = x.sigmoid()
         return x
+
+
+class LabelPredictor(nn.Module):
+    def __init__(
+        self, in_dim: int, hidden_dim_multiplier: float = 0.5, out_dim: int = 2
+    ):
+        super().__init__()
+        hidden_dim = int(hidden_dim_multiplier * in_dim)
+        self.lin_node = nn.Linear(in_dim, hidden_dim)
+        self.out = nn.Linear(hidden_dim, out_dim)
+
+    def forward(self, x: Tensor) -> Tensor:
+        x = self.lin_node(x)
+        x = x.relu()
+        x = self.out(x)
+        return log_softmax(x, dim=-1)
 
 
 class ResidualModuleWrapper(nn.Module):
