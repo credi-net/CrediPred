@@ -70,7 +70,9 @@ def main() -> None:
             # Reading only the 'domain' column to save memory
             df_chunk = pd.read_csv(node_csv, usecols=['domain'])
             logging.info('Loaded csv')
+            logging.info(f'Logging Head: {df_chunk.head()}')
             all_unique_domains.update(df_chunk['domain'].tolist())
+            logging.info(f'Number of unique domains {len(all_unique_domains)}')
             logging.info(f'Added csv: {node_csv} to set.')
         else:
             logging.warning(f'File not found: {node_csv}')
