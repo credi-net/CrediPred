@@ -7,6 +7,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
+from credipred.utils.domain_handler import reverse_domain
 from credipred.utils.logger import setup_logging
 from credipred.utils.path import get_scratch
 from credipred.utils.readers import get_full_dict
@@ -26,7 +27,7 @@ def generate_splits(
     labeled_data = [
         {'domain': d, 'label': domains_to_binary[d]}
         for d in tqdm(all_domains, desc='Intersecting with labels')
-        if d in domains_to_binary
+        if reverse_domain(d) in domains_to_binary
     ]
 
     if not labeled_data:
