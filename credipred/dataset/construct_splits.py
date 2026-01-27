@@ -24,11 +24,14 @@ def generate_splits(
     domains_to_binary: Dict[str, int],
     scratch_path: pathlib.Path,
 ) -> None:
-    labeled_data = [
-        {'domain': d, 'label': domains_to_binary[d]}
-        for d in tqdm(all_domains, desc='Intersecting with labels')
-        if reverse_domain(d) in domains_to_binary
-    ]
+    labeled_data = []
+    for domain in tqdm(all_domains, desc='Intersectin with Labels'):
+        try:
+            if reverse_domain(domain) in domains_to_binary:
+                domain_to_label = {'domain': domain, 'label': domains_to_binary[domain]}
+                labeled_data.append(domain_to_label)
+        except KeyError:
+            logging.info(f'Critical {domain.strip()} is not found in mapping.')
 
     if not labeled_data:
         logging.error('Labeled data is empty. No intersection found')
