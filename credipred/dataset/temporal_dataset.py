@@ -554,6 +554,13 @@ class TemporalBinaryDataset(InMemoryDataset):
         train_idx = torch.as_tensor(train_idx)
         logging.info(f'Train size: {train_idx.size()}')
 
+        idx_dict = {
+            'train': train_idx,
+            'valid': valid_idx,
+            'test': test_idx,
+        }
+        self.save_split(mapping=mapping, idx_dict=idx_dict)
+
         logging.info('***Constructing Edge Matrix***')
         edge_index, edge_attr = load_large_edge_csv(
             path=edge_path,
@@ -579,14 +586,9 @@ class TemporalBinaryDataset(InMemoryDataset):
         data.valid_mask[valid_idx] = True
         data.test_mask = torch.zeros(num_nodes, dtype=torch.bool)
         data.test_mask[test_idx] = True
-        data.idx_dict = {
-            'train': train_idx,
-            'valid': valid_idx,
-            'test': test_idx,
-        }
+        data.idx_dict = idx_dict
 
         self.verify_stratification(data=data, dict_split=data.idx_dict)
-        self.save_split(mapping, data.idx_dict)
 
         assert data.edge_index.max() < data.x.size(0), 'edge_index out of bounds'
 
