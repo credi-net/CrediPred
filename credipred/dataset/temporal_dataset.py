@@ -405,17 +405,35 @@ class TemporalBinaryDataset(InMemoryDataset):
     def download(self) -> None:
         """No-op download hook (raw data must already exist locally)."""
 
+    # def save_split(self, mapping: Dict, idx_dict: Dict) -> None:
+    #     reverse_mapping = {v: k for k, v in mapping.items()}
+    #     lookup_tensor = torch.tensor(
+    #         [reverse_mapping[i] for i in range(len(reverse_mapping))]
+    #     )
+    #     for name, idx in idx_dict.items():
+    #         values = lookup_tensor[idx]
+    #         df_split_to_save = pd.DataFrame({f'Domains_{name}': values})
+    #         df_split_to_save.to_parquet(
+    #             self.processed_dir, engine='pyarrow', index=False
+    #         )
+    #     logging.info(f'Saved train/valid/test splits at: {self.processed_dir}')
+
     def save_split(self, mapping: Dict, idx_dict: Dict) -> None:
         reverse_mapping = {v: k for k, v in mapping.items()}
-        lookup_tensor = torch.tensor(
+
+        lookup_array = np.array(
             [reverse_mapping[i] for i in range(len(reverse_mapping))]
         )
+
         for name, idx in idx_dict.items():
-            values = lookup_tensor[idx]
+            values = lookup_array[idx.cpu().numpy()]
+
             df_split_to_save = pd.DataFrame({f'Domains_{name}': values})
-            df_split_to_save.to_parquet(
-                self.processed_dir, engine='pyarrow', index=False
-            )
+
+            save_path = os.path.join(self.processed_dir, f'{name}_split.parquet')
+
+            df_split_to_save.to_parquet(save_path, engine='pyarrow', index=False)
+
         logging.info(f'Saved train/valid/test splits at: {self.processed_dir}')
 
     def process(self) -> None:
