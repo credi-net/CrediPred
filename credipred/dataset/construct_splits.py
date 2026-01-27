@@ -59,7 +59,7 @@ def main() -> None:
     setup_logging('generate_all_targets.log')
 
     domains_to_binary = get_full_dict()
-    paths = ['dec_2024_domains', 'nov2024_domains', 'oct2024_domains']
+    paths = ['dec_2024_domain', 'nov2024_domain', 'oct2024_domain']
 
     all_unique_domains = set()
 
