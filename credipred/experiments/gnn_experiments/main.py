@@ -76,12 +76,13 @@ def main() -> None:
     )
 
     if args.binary_classification:
+        logging.info(f'Using global splits: {cast(str, meta_args.split_folder)}')
         dataset = TemporalBinaryDatasetGlobalSplits(
             root=f'{root}/data/',
             node_file=cast(str, meta_args.node_file),
             edge_file=cast(str, meta_args.edge_file),
             target_file=cast(str, meta_args.target_file),
-            split_dir=str(meta_args.split_folder),
+            split_dir=cast(str, meta_args.split_folder),
             target_col=meta_args.target_col,
             edge_src_col=meta_args.edge_src_col,
             edge_dst_col=meta_args.edge_dst_col,
