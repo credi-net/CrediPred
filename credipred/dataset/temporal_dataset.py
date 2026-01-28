@@ -834,7 +834,7 @@ class TemporalBinaryDatasetGlobalSplits(InMemoryDataset):
             parquet_file=str(self.split_dir / 'train_domains.parquet'),
             target_df=df_target,
         )
-        logging.info(f'Pre-downsampled size valid: {len(train_idx_list)}')
+        logging.info(f'Pre-downsampled size train: {len(train_idx_list)}')
         valid_idx_list = get_split_indices(
             parquet_file=str(self.split_dir / 'test_domains.parquet'),
             target_df=df_target,
@@ -844,7 +844,7 @@ class TemporalBinaryDatasetGlobalSplits(InMemoryDataset):
             parquet_file=str(self.split_dir / 'val_domains.parquet'),
             target_df=df_target,
         )
-        logging.info(f'Pre-downsampled size valid: {len(test_idx_list)}')
+        logging.info(f'Pre-downsampled size test: {len(test_idx_list)}')
 
         # Naive Undersampling Logic
         def downsample_to_balanced(
@@ -859,7 +859,7 @@ class TemporalBinaryDatasetGlobalSplits(InMemoryDataset):
             n_neg = neg_idx.size(0)
 
             logging.info(
-                f'Pre-undersample balance: Positive={n_pos}, Negative={n_neg}, ratio={n_pos / (n_neg + n_pos)}:2f'
+                f'Pre-undersample balance: Positive={n_pos}, Negative={n_neg}, ratio={n_pos / (n_neg + n_pos):2f}'
             )
 
             logging.info(f'Downsampling positives from {n_pos} to {n_neg}')
