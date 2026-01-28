@@ -718,6 +718,7 @@ class TemporalBinaryDatasetGlobalSplits(InMemoryDataset):
         self.seed = seed
         if split_dir:
             self.split_dir = pathlib.Path(split_dir)
+            logging.info(f'Global split directory: {split_dir}')
         else:
             self.split_dir = pathlib.Path()
 
