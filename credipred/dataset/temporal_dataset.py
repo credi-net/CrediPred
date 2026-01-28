@@ -824,7 +824,9 @@ class TemporalBinaryDatasetGlobalSplits(InMemoryDataset):
 
             valid_mask = split_scores != -1.0
             indices = [
-                mapping[d] for d in local_split_df[valid_mask, 'domain'] if d in mapping
+                mapping[d]
+                for d in local_split_df.loc[valid_mask, 'domain']
+                if d in mapping
             ]
             return indices
 
