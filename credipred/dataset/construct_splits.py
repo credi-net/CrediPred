@@ -19,6 +19,13 @@ parser = argparse.ArgumentParser(
 )
 
 
+def downsample_to_balance(df: pd.DataFrame) -> pd.DataFrame:
+    counts = df['label'].value_counts()
+    minority_size = counts.min()
+    balanced_df = df.groupby('label').sample(n=minority_size, random_state=42)
+    return balanced_df.sample(frac=1, random_state=42)
+
+
 def generate_splits(
     all_domains: List[str],
     domains_to_binary: Dict[str, int],
@@ -52,11 +59,15 @@ def generate_splits(
         df, test_size=0.4, random_state=42, stratify=df['label']
     )
 
-    test_df, val_df = train_test_split(
+    test_df_raw, val_df_raw = train_test_split(
         temp_df, test_size=0.5, random_state=42, stratify=temp_df['label']
     )
 
-    output_dir = scratch_path / 'data' / 'splits'
+    logging.info('Downsampling Test and Val sets to balance classess...')
+    test_df = downsample_to_balance(test_df_raw)
+    val_df = downsample_to_balance(val_df_raw)
+
+    output_dir = scratch_path / 'data' / 'splits' / 'balanced'
     output_dir.mkdir(parents=True, exist_ok=True)
 
     train_df.to_parquet(output_dir / 'train_domains.parquet', index=False)
@@ -67,6 +78,10 @@ def generate_splits(
     logging.info(
         f'Counts - Train: {len(train_df)}, Test: {len(test_df)}, Val: {len(val_df)}'
     )
+
+    logging.info(f'Train class Dist:\n{train_df["label"].value_counts()}')
+    logging.info(f'Train class Dist:\n{test_df["label"].value_counts()}')
+    logging.info(f'Train class Dist:\n{val_df["label"].value_counts()}')
 
 
 def main() -> None:
