@@ -119,7 +119,7 @@ class MetaArguments:
         self.edge_file = resolve_paths(self.edge_file)
         self.target_file = resolve_paths(self.target_file)
         self.database_folder = resolve_paths(self.database_folder)
-        self.split_folder = resolve_paths(self.database_folder)
+        self.split_folder = resolve_paths(self.split_folder)
         self.processed_location = resolve_paths(self.processed_location)
 
         if self.log_file_path is not None:
