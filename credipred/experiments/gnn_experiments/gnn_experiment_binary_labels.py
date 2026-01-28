@@ -20,6 +20,7 @@ def train_(
     model: torch.nn.Module,
     train_loader: NeighborLoader,
     optimizer: torch.optim.AdamW,
+    use_down_sampling: bool,
 ) -> Tuple[float, float]:
     model.train()
     device = next(model.parameters()).device
@@ -36,13 +37,36 @@ def train_(
         if train_mask.sum() == 0:
             continue
 
-        loss = F.nll_loss(preds[train_mask], targets[train_mask])
+        # TODO: Refactor this to be clearner. Too many conditional branches
+        if use_down_sampling:
+            pos_idx = torch.where(train_mask & (targets == 1))[0]
+            neg_idx = torch.where(train_mask & (targets == 0))[0]
+
+            n_pos = pos_idx.numel()
+            n_neg = neg_idx.numel()
+
+            if n_pos > n_neg and n_neg > 0:
+                perm = torch.randperm(n_pos, device=device)[:n_neg]
+                pos_idx = pos_idx[perm]
+
+                balanced_mask = torch.zeros_like(train_mask, dtype=torch.bool)
+                balanced_mask[pos_idx] = True
+                balanced_mask[neg_idx] = False
+                active_mask = balanced_mask
+
+            else:
+                active_mask = train_mask
+
+        else:
+            active_mask = train_mask
+
+        loss = F.nll_loss(preds[active_mask], targets[active_mask])
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
-        total_samples += train_mask.sum().item()
-        all_preds.append(preds[train_mask].argmax(dim=-1))
-        all_targets.append(targets[train_mask])
+        total_samples += active_mask.sum().item()
+        all_preds.append(preds[active_mask].argmax(dim=-1))
+        all_targets.append(targets[active_mask])
 
     avg_ce = total_loss / total_samples
     # Calculate accuracy
@@ -180,7 +204,9 @@ def run_binary_class_gnn_baseline(
         optimizer = torch.optim.AdamW(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch_mse: List[Tuple[float, float, float, float, float]] = []
         for _ in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
-            loss_ce, _ = train_(model, train_loader, optimizer)
+            loss_ce, _ = train_(
+                model, train_loader, optimizer, model_arguments.down_sample_train
+            )
             train_ce_loss, train_acc, _, _ = evaluate(model, train_loader, 'train_mask')
             valid_ce_loss, valid_acc, valid_mean_acc, _ = evaluate(
                 model, val_loader, 'valid_mask'
