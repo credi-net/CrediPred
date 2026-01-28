@@ -3,7 +3,7 @@ import logging
 from typing import Dict, cast
 
 from credipred.dataset.temporal_dataset import (
-    TemporalBinaryDataset,
+    TemporalBinaryDatasetGlobalSplits,
     TemporalDataset,
 )
 from credipred.encoders.categorical_encoder import CategoricalEncoder
@@ -76,11 +76,12 @@ def main() -> None:
     )
 
     if args.binary_classification:
-        dataset = TemporalBinaryDataset(
+        dataset = TemporalBinaryDatasetGlobalSplits(
             root=f'{root}/data/',
             node_file=cast(str, meta_args.node_file),
             edge_file=cast(str, meta_args.edge_file),
             target_file=cast(str, meta_args.target_file),
+            split_dir=str(meta_args.split_folder),
             target_col=meta_args.target_col,
             edge_src_col=meta_args.edge_src_col,
             edge_dst_col=meta_args.edge_dst_col,

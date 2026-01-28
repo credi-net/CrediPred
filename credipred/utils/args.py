@@ -40,6 +40,9 @@ class MetaArguments:
     database_folder: Union[str, List[str]] = field(
         metadata={'help': 'The folder containing the relational database.'},
     )
+    split_folder: Union[str, List[str]] = field(
+        metadata={'help': 'The folder containing the splits.'},
+    )
     processed_location: Union[str, List[str]] = field(
         metadata={'help': 'The location to save the processed feature matrix.'},
     )
@@ -116,6 +119,7 @@ class MetaArguments:
         self.edge_file = resolve_paths(self.edge_file)
         self.target_file = resolve_paths(self.target_file)
         self.database_folder = resolve_paths(self.database_folder)
+        self.split_folder = resolve_paths(self.database_folder)
         self.processed_location = resolve_paths(self.processed_location)
 
         if self.log_file_path is not None:
