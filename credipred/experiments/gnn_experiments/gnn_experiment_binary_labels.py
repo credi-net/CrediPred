@@ -33,17 +33,17 @@ def train_(
         batch = batch.to(device)
         preds = model(batch.x, batch.edge_index)
         targets = batch.y
-        train_mask = batch.train_mask
+        active_mask = batch.train_mask
         batch_weights = None
-        if train_mask.sum() == 0:
+        if active_mask.sum() == 0:
             continue
 
         match training_method:
             case TrainingMethods.DEFAULT:
-                active_mask = train_mask
+                continue
             case TrainingMethods.DOWN_SAMPLE:
-                pos_idx = torch.where(train_mask & (targets == 1))[0]
-                neg_idx = torch.where(train_mask & (targets == 0))[0]
+                pos_idx = torch.where(active_mask & (targets == 1))[0]
+                neg_idx = torch.where(active_mask & (targets == 0))[0]
 
                 n_pos = pos_idx.numel()
                 n_neg = neg_idx.numel()
@@ -52,7 +52,7 @@ def train_(
                     perm = torch.randperm(n_pos, device=device)[:n_neg]
                     pos_idx = pos_idx[perm]
 
-                    balanced_mask = torch.zeros_like(train_mask, dtype=torch.bool)
+                    balanced_mask = torch.zeros_like(active_mask, dtype=torch.bool)
                     balanced_mask[pos_idx] = True
                     balanced_mask[neg_idx] = False
                     active_mask = balanced_mask
