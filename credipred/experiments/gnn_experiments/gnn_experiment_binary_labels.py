@@ -10,7 +10,7 @@ from tqdm import tqdm
 from credipred.dataset.temporal_dataset import TemporalBinaryDataset
 from credipred.gnn.model import Model
 from credipred.utils.args import DataArguments, ModelArguments
-from credipred.utils.enums import Metric
+from credipred.utils.enums import Metric, TrainingMethods
 from credipred.utils.logger import Logger
 from credipred.utils.plot import Scoring, plot_avg_loss
 from credipred.utils.save import save_loss_results
@@ -20,7 +20,7 @@ def train_(
     model: torch.nn.Module,
     train_loader: NeighborLoader,
     optimizer: torch.optim.AdamW,
-    use_down_sampling: bool,
+    training_method: TrainingMethods,
 ) -> Tuple[float, float]:
     model.train()
     device = next(model.parameters()).device
@@ -34,33 +34,46 @@ def train_(
         preds = model(batch.x, batch.edge_index)
         targets = batch.y
         train_mask = batch.train_mask
+        batch_weights = None
         if train_mask.sum() == 0:
             continue
 
-        # TODO: Refactor this to be clearner. Too many conditional branches
-        if use_down_sampling:
-            pos_idx = torch.where(train_mask & (targets == 1))[0]
-            neg_idx = torch.where(train_mask & (targets == 0))[0]
-
-            n_pos = pos_idx.numel()
-            n_neg = neg_idx.numel()
-
-            if n_pos > n_neg and n_neg > 0:
-                perm = torch.randperm(n_pos, device=device)[:n_neg]
-                pos_idx = pos_idx[perm]
-
-                balanced_mask = torch.zeros_like(train_mask, dtype=torch.bool)
-                balanced_mask[pos_idx] = True
-                balanced_mask[neg_idx] = False
-                active_mask = balanced_mask
-
-            else:
+        match training_method:
+            case TrainingMethods.DEFAULT:
                 active_mask = train_mask
+            case TrainingMethods.DOWN_SAMPLE:
+                pos_idx = torch.where(train_mask & (targets == 1))[0]
+                neg_idx = torch.where(train_mask & (targets == 0))[0]
 
-        else:
-            active_mask = train_mask
+                n_pos = pos_idx.numel()
+                n_neg = neg_idx.numel()
 
-        loss = F.nll_loss(preds[active_mask], targets[active_mask])
+                if n_pos > n_neg and n_neg > 0:
+                    perm = torch.randperm(n_pos, device=device)[:n_neg]
+                    pos_idx = pos_idx[perm]
+
+                    balanced_mask = torch.zeros_like(train_mask, dtype=torch.bool)
+                    balanced_mask[pos_idx] = True
+                    balanced_mask[neg_idx] = False
+                    active_mask = balanced_mask
+
+            case TrainingMethods.WEIGHTED_LOSS:
+                num_pos = (targets == 1).sum().float()
+                num_neg = (targets == 0).sum().float()
+
+                if num_pos > 0 and num_neg > 0:
+                    # W_1 x C_1 = W_0 x C_0
+                    weight_neg = 1.0
+                    weight_pos = num_neg / num_pos
+                    batch_weights = torch.tensor(
+                        [weight_neg, weight_pos], device=device
+                    )
+                else:
+                    batch_weights = None
+
+        loss = F.nll_loss(
+            preds[active_mask], targets[active_mask], weight=batch_weights
+        )
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
@@ -205,7 +218,7 @@ def run_binary_class_gnn_baseline(
         loss_tuple_epoch_mse: List[Tuple[float, float, float, float, float]] = []
         for _ in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
             loss_ce, _ = train_(
-                model, train_loader, optimizer, model_arguments.down_sample_train
+                model, train_loader, optimizer, model_arguments.training_method
             )
             train_ce_loss, train_acc, _, _ = evaluate(model, train_loader, 'train_mask')
             valid_ce_loss, valid_acc, valid_mean_acc, _ = evaluate(

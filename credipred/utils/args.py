@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Tuple, Union
 import yaml
 from hf_argparser import HfArgumentParser
 
+from credipred.utils.enums import TrainingMethods
 from credipred.utils.path import get_root_dir, get_scratch
 
 
@@ -183,14 +184,21 @@ class ModelArguments:
     lr: float = field(default=0.001, metadata={'help': 'Learning Rate.'})
     epochs: int = field(default=500, metadata={'help': 'Number of epochs.'})
     runs: int = field(default=100, metadata={'help': 'Number of trials.'})
-    down_sample_train: bool = field(
-        default=False, metadata={'help': 'Whether to use down-sampling in training.'}
+    training_method: TrainingMethods = field(
+        default=TrainingMethods.DEFAULT,
+        metadata={'help': 'What training method to use.'},
     )
     use_cuda: bool = field(default=True, metadata={'help': 'Whether to use cuda.'})
     device: int = field(default=0, metadata={'help': 'Device to be used.'})
     log_steps: int = field(
         default=50, metadata={'help': 'Step mod epoch to print logger.'}
     )
+
+    def __post_init__(self) -> None:
+        if isinstance(self.training_method, str):
+            self.training_method = TrainingMethods[self.training_method.upper()]
+        else:
+            self.training_method = TrainingMethods['DEFAULT']
 
 
 @dataclass

@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, auto
 
 
 class Scoring(str, Enum):
@@ -23,3 +23,9 @@ class ConvolutionEnums(str, Enum):
     sage = 'SAGE'
     gat = 'GAT'
     gatv2 = 'GATv2'
+
+
+class TrainingMethods(Enum):
+    DEFAULT = auto()
+    DOWN_SAMPLE = auto()
+    WEIGHTED_LOSS = auto()
