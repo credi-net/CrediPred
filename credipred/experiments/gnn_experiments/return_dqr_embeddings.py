@@ -1,17 +1,22 @@
 import argparse
 import logging
-import pickle
 from pathlib import Path
-from typing import Dict, cast
+from typing import Dict, List, cast
 
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 import torch
 from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
 
 from credipred.dataset.temporal_dataset import TemporalDataset
+from credipred.encoders.categorical_encoder import CategoricalEncoder
 from credipred.encoders.encoder import Encoder
+from credipred.encoders.norm_encoding import NormEncoder
+from credipred.encoders.pre_embedding_encoder import TextEmbeddingEncoder
 from credipred.encoders.rni_encoding import RNIEncoder
+from credipred.encoders.zero_encoder import ZeroEncoder
 from credipred.gnn.model import Model
 from credipred.utils.args import ModelArguments, parse_args
 from credipred.utils.domain_handler import reverse_domain
@@ -55,6 +60,7 @@ def run_forward_get_embeddings(
         out_channels=model_arguments.embedding_dimension,
         num_layers=model_arguments.num_layers,
         dropout=model_arguments.dropout,
+        binary=False,
     ).to(device)
     model.load_state_dict(torch.load(weight_path, map_location=device))
     logging.info('Model Loaded.')
@@ -95,13 +101,38 @@ def run_forward_get_embeddings(
             if idx is not None:
                 domain_embeddings[dom] = all_preds_embeddings[idx].tolist()
 
-        save_path = weight_directory / 'dqr_domain_rni_embeddings.pkl'
-        save_path.parent.mkdir(parents=True, exist_ok=True)
+        parquet_rows: Dict[str, List] = {'domain': [], 'embeddings': []}
 
-        with open(save_path, 'wb') as f:
-            pickle.dump(domain_embeddings, f)
+        for domain, emb in domain_embeddings.items():
+            parquet_rows['domain'].append(domain)
+            parquet_rows['embeddings'].append(emb)
 
-        logging.info(f'Saved domain embedding to {save_path}')
+        write_domain_emb_parquet(
+            rows=parquet_rows,
+            directory_path=weight_directory,
+            file_name='dqr_domain_gat_from_text_embeddings.parquet',
+        )
+
+
+def write_domain_emb_parquet(rows: Dict, directory_path: Path, file_name: str) -> None:
+    schema = pa.schema(
+        [
+            ('domain', pa.string()),
+            (
+                'embeddings',
+                pa.list_(pa.float32()),
+            ),
+        ]
+    )
+    table = pa.Table.from_pydict(rows, schema=schema)
+    table = table.sort_by('domain')
+    pq.write_table(
+        table,
+        directory_path / file_name,
+        row_group_size=100,
+        use_dictionary=['domain'],
+    )
+    logging.info(f'Saved domain embedding to {directory_path / file_name}')
 
 
 def main() -> None:
@@ -115,6 +146,10 @@ def main() -> None:
 
     encoder_classes: Dict[str, Encoder] = {
         'RNI': RNIEncoder(64),  # TODO: Set this a paramater
+        'ZERO': ZeroEncoder(64),
+        'NORM': NormEncoder(),
+        'CAT': CategoricalEncoder(),
+        'PRE': TextEmbeddingEncoder(64),
     }
 
     encoding_dict: Dict[str, Encoder] = {}
