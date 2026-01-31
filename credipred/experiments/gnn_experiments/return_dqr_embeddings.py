@@ -7,24 +7,22 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 import torch
-from tgrag.dataset.temporal_dataset import TemporalDataset
-from tgrag.encoders.encoder import Encoder
-from tgrag.encoders.rni_encoding import RNIEncoder
-from tgrag.gnn.model import Model
-from tgrag.utils.args import ModelArguments, parse_args
-from tgrag.utils.domain_handler import reverse_domain
-from tgrag.utils.logger import setup_logging
-from tgrag.utils.path import get_root_dir, get_scratch
-from tgrag.utils.seed import seed_everything
 from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
 
+from credipred.dataset.temporal_dataset import TemporalDataset
 from credipred.encoders.categorical_encoder import CategoricalEncoder
 from credipred.encoders.encoder import Encoder
 from credipred.encoders.norm_encoding import NormEncoder
 from credipred.encoders.pre_embedding_encoder import TextEmbeddingEncoder
 from credipred.encoders.rni_encoding import RNIEncoder
 from credipred.encoders.zero_encoder import ZeroEncoder
+from credipred.gnn.model import Model
+from credipred.utils.args import ModelArguments, parse_args
+from credipred.utils.domain_handler import reverse_domain
+from credipred.utils.logger import setup_logging
+from credipred.utils.path import get_root_dir, get_scratch
+from credipred.utils.seed import seed_everything
 
 parser = argparse.ArgumentParser(
     description='Get final dqr node embeddings.',
@@ -62,6 +60,7 @@ def run_forward_get_embeddings(
         out_channels=model_arguments.embedding_dimension,
         num_layers=model_arguments.num_layers,
         dropout=model_arguments.dropout,
+        binary=False,
     ).to(device)
     model.load_state_dict(torch.load(weight_path, map_location=device))
     logging.info('Model Loaded.')
