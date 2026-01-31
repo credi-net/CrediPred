@@ -139,7 +139,7 @@ def write_domain_emb_parquet(rows: Dict, directory_path: Path, file_name: str) -
 
 def main() -> None:
     root = get_root_dir()
-    scratch = get_scratch()
+    get_scratch()
     args = parser.parse_args()
     config_file_path = root / args.config_file
     meta_args, experiment_args = parse_args(config_file_path)
@@ -173,7 +173,7 @@ def main() -> None:
         switch_source=meta_args.switch_source,
         encoding=encoding_dict,
         seed=meta_args.global_seed,
-        processed_dir=f'{scratch}/{meta_args.processed_location}',
+        processed_dir=cast(str, meta_args.processed_location),
     )
     logging.info('In-Memory Dataset loaded.')
     weight_directory = (
