@@ -71,11 +71,8 @@ def main() -> None:
 
     logging.info(f'force_undirected: {meta_args.force_undirected}')
 
-    logging.info(
-        f'Task in use: {"classification" if args.binary_classification else "regression"}'
-    )
-
     if args.binary_classification:
+        logging.info('Task in use: Classification')
         logging.info(f'Using global splits: {cast(str, meta_args.split_folder)}')
         dataset = TemporalBinaryDatasetGlobalSplits(
             root=f'{root}/data/',
@@ -94,6 +91,7 @@ def main() -> None:
             processed_dir=cast(str, meta_args.processed_location),
         )  # Map to .to_cpu()
     else:
+        logging.info('Task in use: Regression')
         dataset = TemporalDatasetGlobalSplit(
             root=f'{root}/data/',
             node_file=cast(str, meta_args.node_file),
