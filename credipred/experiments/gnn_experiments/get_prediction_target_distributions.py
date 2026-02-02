@@ -10,6 +10,7 @@ from tqdm import tqdm
 from credipred.dataset.temporal_dataset import TemporalDataset
 from credipred.encoders.encoder import Encoder
 from credipred.encoders.rni_encoding import RNIEncoder
+from credipred.encoders.pre_embedding_encoder import TextEmbeddingEncoder
 from credipred.gnn.model import Model
 from credipred.utils.args import ModelArguments, parse_args
 from credipred.utils.logger import setup_logging
@@ -46,6 +47,11 @@ def run_get_test_predictions(
     test_idx = dataset.get_idx_split()['test']
     logging.info(f'Length of testing indices: {len(test_idx)}')
     logging.info('Mapping returned.')
+    # Build GPS-specific attention kwargs if using GPS
+    gps_attn_kwargs = None
+    if model_arguments.model == 'GPS':
+        gps_attn_kwargs = {'dropout': model_arguments.gps_attn_dropout}
+
     model = Model(
         model_name=model_arguments.model,
         normalization=model_arguments.normalization,
@@ -54,6 +60,11 @@ def run_get_test_predictions(
         out_channels=model_arguments.embedding_dimension,
         num_layers=model_arguments.num_layers,
         dropout=model_arguments.dropout,
+        # GraphGPS specific parameters
+        gps_heads=model_arguments.gps_heads,
+        gps_attn_type=model_arguments.gps_attn_type,
+        gps_attn_kwargs=gps_attn_kwargs,
+        gps_local_mpnn=model_arguments.gps_local_mpnn,
     ).to(device)
     model.load_state_dict(torch.load(weight_path, map_location=device))
     logging.info('Model Loaded.')
@@ -117,6 +128,7 @@ def main() -> None:
 
     encoder_classes: Dict[str, Encoder] = {
         'RNI': RNIEncoder(64),  # TODO: Set this a paramater
+        'PRE': TextEmbeddingEncoder(64),
     }
 
     encoding_dict: Dict[str, Encoder] = {}
@@ -135,7 +147,9 @@ def main() -> None:
         index_col=meta_args.index_col,
         encoding=encoding_dict,
         seed=meta_args.global_seed,
-        processed_dir=f'{scratch}/{meta_args.processed_location}',
+        processed_dir=cast(str, meta_args.processed_location),
+        embedding_index_file=meta_args.embedding_index_file,
+        embedding_folder=meta_args.embedding_folder,
     )
     logging.info('In-Memory Dataset loaded.')
     weight_directory = (

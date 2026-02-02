@@ -46,6 +46,8 @@ class TemporalDataset(InMemoryDataset):
         pre_transform: Optional[Callable] = None,
         seed: int = 42,
         processed_dir: Optional[str] = None,
+        embedding_index_file: Optional[str] = None,
+        embedding_folder: Optional[str] = None,
     ):
         """Initialize the dataset configuration and load processed data if present.
 
@@ -82,6 +84,10 @@ class TemporalDataset(InMemoryDataset):
                 Random seed for dataset splitting.
             processed_dir : Optional[str]
                 Optional override for processed data directory.
+            embedding_index_file : Optional[str]
+                Path to the domain-to-embedding-file index pickle for PRE encoder.
+            embedding_folder : Optional[str]
+                Path to the folder containing embedding pickle files for PRE encoder.
         """
         self.node_file = node_file
         self.edge_file = edge_file
@@ -98,6 +104,8 @@ class TemporalDataset(InMemoryDataset):
         self.encoding = encoding
         self.seed = seed
         self._custome_processed_dir = processed_dir
+        self.embedding_index_file = embedding_index_file
+        self.embedding_folder = embedding_folder
         super().__init__(root, transform, pre_transform)
         self.data, self.slices = torch.load(self.processed_paths[0], weights_only=False)
 
@@ -143,6 +151,8 @@ class TemporalDataset(InMemoryDataset):
             path=node_path,
             index_col=0,
             encoders=self.encoding,
+            embedding_index_file=self.embedding_index_file,
+            embedding_folder=self.embedding_folder,
         )
         logging.info('***Feature Matrix Done***')
 
