@@ -4,7 +4,7 @@ from typing import Dict, cast
 
 from credipred.dataset.temporal_dataset import (
     TemporalBinaryDatasetGlobalSplits,
-    TemporalDataset,
+    TemporalDatasetGlobalSplit,
 )
 from credipred.encoders.categorical_encoder import CategoricalEncoder
 from credipred.encoders.encoder import Encoder
@@ -94,7 +94,7 @@ def main() -> None:
             processed_dir=cast(str, meta_args.processed_location),
         )  # Map to .to_cpu()
     else:
-        dataset = TemporalDataset(
+        dataset = TemporalDatasetGlobalSplit(
             root=f'{root}/data/',
             node_file=cast(str, meta_args.node_file),
             edge_file=cast(str, meta_args.edge_file),
