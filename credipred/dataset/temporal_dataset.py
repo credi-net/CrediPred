@@ -1131,25 +1131,6 @@ class TemporalDatasetGlobalSplit(InMemoryDataset):
                 f"No labeled nodes found in target column '{self.target_col}'"
             )
 
-        logging.info('***Constructing Edge Matrix***')
-        edge_index, edge_attr = load_large_edge_csv(
-            path=edge_path,
-            src_index_col=self.edge_src_col,
-            dst_index_col=self.edge_dst_col,
-            switch_source=self.switch_source,
-            mapping=mapping,
-            encoders=None,
-        )
-        logging.info('***Edge Matrix Constructed***')
-
-        if self.force_undirected:
-            logging.info('Converting edge index to undirected.')
-            edge_index = to_undirected(edge_index)
-
-        data = Data(x=x_full, y=score, edge_index=edge_index, edge_attr=edge_attr)
-
-        data.labeled_mask = labeled_mask.detach().clone().bool()
-
         def get_split_indices(
             parquet_file: str, target_df: pd.DataFrame
         ) -> torch.Tensor:
@@ -1178,6 +1159,25 @@ class TemporalDatasetGlobalSplit(InMemoryDataset):
             str(self.split_dir / 'test_regression_domains.parquet'), target_df=df_target
         )
         logging.info(f'Test size: {test_idx.size()}')
+
+        logging.info('***Constructing Edge Matrix***')
+        edge_index, edge_attr = load_large_edge_csv(
+            path=edge_path,
+            src_index_col=self.edge_src_col,
+            dst_index_col=self.edge_dst_col,
+            switch_source=self.switch_source,
+            mapping=mapping,
+            encoders=None,
+        )
+        logging.info('***Edge Matrix Constructed***')
+
+        if self.force_undirected:
+            logging.info('Converting edge index to undirected.')
+            edge_index = to_undirected(edge_index)
+
+        data = Data(x=x_full, y=score, edge_index=edge_index, edge_attr=edge_attr)
+
+        data.labeled_mask = labeled_mask.detach().clone().bool()
 
         # Set global indices for our transductive nodes:
         num_nodes = data.num_nodes
