@@ -160,6 +160,8 @@ def load_node_csv(
     index_col: int,
     encoders: Dict | None = None,
     chunk_size: int = 500_000,
+    embedding_index_file: str | None = None,
+    embedding_folder: str | None = None,
 ) -> Tuple[torch.Tensor | None, Dict, pd.Index]:
     """Load a node CSV file, build an index mapping, and optionally encode features.
 
@@ -172,12 +174,15 @@ def load_node_csv(
             Mapping from column names to encoder functions.
         chunk_size : int, optional
             Number of rows to read per chunk.
+        embedding_index_file : str or None, optional
+            Path to the domain-to-embedding-file index pickle for PRE encoder.
+        embedding_folder : str or None, optional
+            Path to the folder containing embedding pickle files for PRE encoder.
 
     Returns:
         (torch.Tensor or None, dict, pandas.Index)
             Feature tensor (or None), mapping from node id to index, and row index.
     """
-    scratch = get_scratch()
     dfs = []
 
     with pd.read_csv(path, index_col=index_col, chunksize=chunk_size) as reader:
@@ -195,13 +200,16 @@ def load_node_csv(
             if key in df.columns:
                 xs.append(encoder(df[key].values))
             elif key == 'pre':
+                if embedding_index_file is None or embedding_folder is None:
+                    raise ValueError(
+                        "PRE encoder requires 'embedding_index_file' and 'embedding_folder' "
+                        "to be specified in the config."
+                    )
                 xs.append(
                     encoder(
                         df.index,
-                        get_embeddings_lookup(
-                            folder_name='data/dec_2024_domain/embeddings/dec2024_wetcontent_domains_index.pkl'
-                        ),
-                        scratch / 'data' / 'dec_2024_domain' / 'embeddings',
+                        get_embeddings_lookup(embedding_index_file),
+                        Path(embedding_folder),
                     )
                 )
             else:
@@ -326,21 +334,22 @@ def load_large_edge_csv(
 
 
 def get_embeddings_lookup(
-    folder_name: str,
+    index_file_path: str,
 ) -> Dict[str, str]:
     """Load and aggregate domain embeddings lookup table.
+
+    Parameters:
+        index_file_path : str
+            Full path to the domain index pickle file.
 
     Returns:
         Dict[str, str]: Mapping from domain to .pkl file name.
     """
-    root = get_scratch()
-    folder_path = Path(root) / folder_name
+    result = {}
+    with open(index_file_path, 'rb') as file:
+        result = pickle.load(file)
 
-    dict = {}
-    with open(folder_path, 'rb') as file:
-        dict = pickle.load(file)
-
-    return dict
+    return result
 
 
 # For labels
