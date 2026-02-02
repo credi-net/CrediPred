@@ -203,7 +203,7 @@ def load_node_csv(
                 if embedding_index_file is None or embedding_folder is None:
                     raise ValueError(
                         "PRE encoder requires 'embedding_index_file' and 'embedding_folder' "
-                        "to be specified in the config."
+                        'to be specified in the config.'
                     )
                 xs.append(
                     encoder(

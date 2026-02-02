@@ -287,38 +287,38 @@ def run_gnn_baseline(
                 gpu_memory_reserved = torch.cuda.memory_reserved(device) / 1e9  # GB
                 gpu_max_memory = torch.cuda.max_memory_allocated(device) / 1e9  # GB
 
-            wandb.log({
-                # Training metrics
-                "train/loss": train_loss,
-                "train/r2": train_r2,
-
-                # Validation metrics
-                "val/loss": valid_loss,
-                "val/r2": valid_r2,
-                "val/mean_baseline_loss": valid_mean_baseline_loss,
-
-                # Test metrics
-                "test/loss": test_loss,
-                "test/r2": test_r2,
-                "test/mean_baseline_loss": test_mean_baseline_loss,
-                "test/random_baseline_loss": test_random_baseline_loss,
-
-                # Learning rate
-                "train/learning_rate": current_lr,
-
-                # GPU metrics
-                "gpu/memory_allocated_gb": gpu_memory_allocated,
-                "gpu/memory_reserved_gb": gpu_memory_reserved,
-                "gpu/max_memory_allocated_gb": gpu_max_memory if torch.cuda.is_available() else 0,
-
-                # Progress tracking
-                "progress/run": run,
-                "progress/epoch": epoch,
-                "progress/global_step": global_step,
-
-                # Best validation loss tracking
-                "best/val_loss": global_best_val_loss if valid_loss >= global_best_val_loss else valid_loss,
-            })
+            wandb.log(
+                {
+                    # Training metrics
+                    'train/loss': train_loss,
+                    'train/r2': train_r2,
+                    # Validation metrics
+                    'val/loss': valid_loss,
+                    'val/r2': valid_r2,
+                    'val/mean_baseline_loss': valid_mean_baseline_loss,
+                    # Test metrics
+                    'test/loss': test_loss,
+                    'test/r2': test_r2,
+                    'test/mean_baseline_loss': test_mean_baseline_loss,
+                    'test/random_baseline_loss': test_random_baseline_loss,
+                    # Learning rate
+                    'train/learning_rate': current_lr,
+                    # GPU metrics
+                    'gpu/memory_allocated_gb': gpu_memory_allocated,
+                    'gpu/memory_reserved_gb': gpu_memory_reserved,
+                    'gpu/max_memory_allocated_gb': gpu_max_memory
+                    if torch.cuda.is_available()
+                    else 0,
+                    # Progress tracking
+                    'progress/run': run,
+                    'progress/epoch': epoch,
+                    'progress/global_step': global_step,
+                    # Best validation loss tracking
+                    'best/val_loss': global_best_val_loss
+                    if valid_loss >= global_best_val_loss
+                    else valid_loss,
+                }
+            )
 
             result = (
                 train_loss,
@@ -337,9 +337,9 @@ def run_gnn_baseline(
                 global_best_val_loss = valid_loss
                 best_state_dict = model.state_dict()
                 # Log best model checkpoint info
-                wandb.run.summary["best_val_loss"] = global_best_val_loss
-                wandb.run.summary["best_epoch"] = epoch
-                wandb.run.summary["best_run"] = run
+                wandb.run.summary['best_val_loss'] = global_best_val_loss
+                wandb.run.summary['best_epoch'] = epoch
+                wandb.run.summary['best_run'] = run
 
             # Early stopping logic
             if valid_loss < best_val_loss_in_run:
@@ -348,7 +348,10 @@ def run_gnn_baseline(
             else:
                 epochs_without_improvement += 1
 
-            if model_arguments.patience > 0 and epochs_without_improvement >= model_arguments.patience:
+            if (
+                model_arguments.patience > 0
+                and epochs_without_improvement >= model_arguments.patience
+            ):
                 logging.info(
                     f'Early stopping at epoch {epoch}. '
                     f'No improvement for {model_arguments.patience} epochs. '
@@ -369,9 +372,9 @@ def run_gnn_baseline(
 
     # Save model as wandb artifact
     model_artifact = wandb.Artifact(
-        name=f"{model_arguments.model}-best-model",
-        type="model",
-        description=f"Best model checkpoint for {model_arguments.model}",
+        name=f'{model_arguments.model}-best-model',
+        type='model',
+        description=f'Best model checkpoint for {model_arguments.model}',
     )
     model_artifact.add_file(str(best_model_path))
     wandb.log_artifact(model_artifact)
@@ -398,15 +401,17 @@ def run_gnn_baseline(
     logging.info(error_1)
 
     # Log summary statistics to wandb
-    wandb.run.summary.update({
-        "final/model": model_arguments.model,
-        "final/best_val_loss": global_best_val_loss,
-        "final/within_10pct_error": error_10,
-        "final/within_5pct_error": error_5,
-        "final/within_1pct_error": error_1,
-        "final/total_epochs": model_arguments.epochs * model_arguments.runs,
-        "final/total_runs": model_arguments.runs,
-    })
+    wandb.run.summary.update(
+        {
+            'final/model': model_arguments.model,
+            'final/best_val_loss': global_best_val_loss,
+            'final/within_10pct_error': error_10,
+            'final/within_5pct_error': error_5,
+            'final/within_1pct_error': error_1,
+            'final/total_epochs': model_arguments.epochs * model_arguments.runs,
+            'final/total_runs': model_arguments.runs,
+        }
+    )
     logging.info('Constructing plots')
     plot_pred_target_distributions_bin_list(
         preds=final_avg_preds,

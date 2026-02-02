@@ -91,11 +91,15 @@ class MetaArguments:
     )
     embedding_index_file: Optional[str] = field(
         default=None,
-        metadata={'help': 'Path to the domain-to-embedding-file index pickle for PRE encoder.'},
+        metadata={
+            'help': 'Path to the domain-to-embedding-file index pickle for PRE encoder.'
+        },
     )
     embedding_folder: Optional[str] = field(
         default=None,
-        metadata={'help': 'Path to the folder containing embedding pickle files for PRE encoder.'},
+        metadata={
+            'help': 'Path to the folder containing embedding pickle files for PRE encoder.'
+        },
     )
     global_seed: int = field(
         default=1337,
@@ -192,7 +196,8 @@ class ModelArguments:
     dropout: float = field(default=0.1, metadata={'help': 'Dropout value.'})
     lr: float = field(default=0.001, metadata={'help': 'Learning Rate.'})
     weight_decay: float = field(
-        default=0.0, metadata={'help': 'Weight decay (L2 regularization) for optimizer.'}
+        default=0.0,
+        metadata={'help': 'Weight decay (L2 regularization) for optimizer.'},
     )
     epochs: int = field(default=500, metadata={'help': 'Number of epochs.'})
     patience: int = field(

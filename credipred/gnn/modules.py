@@ -219,7 +219,7 @@ class GraphGPSModule(nn.Module):
             local_mpnn = GATConv(dim, dim, heads=1, concat=False)
         else:
             raise ValueError(
-                f"Unknown local_mpnn_type: {local_mpnn_type}. "
+                f'Unknown local_mpnn_type: {local_mpnn_type}. '
                 "Choices: 'gin', 'gatedgcn', 'gat'."
             )
 
