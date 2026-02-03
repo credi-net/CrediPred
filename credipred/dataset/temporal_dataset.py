@@ -1093,6 +1093,7 @@ class TemporalDatasetGlobalSplit(InMemoryDataset):
             dqr_dict = get_dqr_dict()
             generate_exact_targets_csv(node_path, target_path, dqr_dict)
 
+        logging.info(f'SPLIT DIR: {self.split_dir}')
         logging.info('***Constructing Feature Matrix***')
         x_full, mapping, full_index = load_node_csv(
             path=node_path,
