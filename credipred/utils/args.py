@@ -184,6 +184,15 @@ class ModelArguments:
     log_steps: int = field(
         default=50, metadata={'help': 'Step mod epoch to print logger.'}
     )
+    # Predictor head type
+    predictor_type: str = field(
+        default='relu_sigmoid',
+        metadata={
+            'help': "Predictor head type. Choices: 'relu_sigmoid' (original), "
+            "'leaky_sigmoid' (LeakyReLU+Sigmoid), 'pure_sigmoid' (GELU+Sigmoid), "
+            "'no_sigmoid' (GELU only, unconstrained output)."
+        },
+    )
 
 
 @dataclass

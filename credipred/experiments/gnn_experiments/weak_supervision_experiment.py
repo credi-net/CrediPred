@@ -56,6 +56,7 @@ def run_weak_supervision_forward(
         out_channels=model_arguments.embedding_dimension,
         num_layers=model_arguments.num_layers,
         dropout=model_arguments.dropout,
+        predictor_type=model_arguments.predictor_type,
     ).to(device)
     model.load_state_dict(torch.load(weight_path, map_location=device))
     logging.info('Model Loaded.')
