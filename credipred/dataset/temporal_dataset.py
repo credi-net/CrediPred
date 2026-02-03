@@ -1045,8 +1045,6 @@ class TemporalDatasetGlobalSplit(InMemoryDataset):
         self.encoding = encoding
         self.seed = seed
         self._custome_processed_dir = processed_dir
-        super().__init__(root, transform, pre_transform)
-        self.data, self.slices = torch.load(self.processed_paths[0], weights_only=False)
         logging.info(f'Split Directory: {split_dir}')
         if split_dir:
             self.split_dir = pathlib.Path(split_dir)
@@ -1055,6 +1053,8 @@ class TemporalDatasetGlobalSplit(InMemoryDataset):
             self.split_dir = pathlib.Path()
 
         logging.info(f'{self.split_dir}')
+        super().__init__(root, transform, pre_transform)
+        self.data, self.slices = torch.load(self.processed_paths[0], weights_only=False)
 
     @property
     def raw_dir(self) -> str:
