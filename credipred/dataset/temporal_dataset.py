@@ -1138,17 +1138,15 @@ class TemporalDatasetGlobalSplit(InMemoryDataset):
         def get_split_indices(
             parquet_file: str, target_df: pd.DataFrame
         ) -> torch.Tensor:
-            df_global = pd.read_parquet(parquet_file)
+            df_split_domains = pd.read_parquet(parquet_file)
 
-            local_split_df = target_df[target_df['domain'].isin(df_global['domain'])]
+            split_indices = [
+                mapping[domain.strip()]
+                for domain in df_split_domains['domain']
+                if domain.strip() in mapping
+            ]
 
-            split_scores = torch.tensor(
-                local_split_df[self.target_col].astype('float32').fillna(-1).values,
-                dtype=torch.float,
-            )
-
-            valid_mask = split_scores != -1.0
-            return labeled_idx[valid_mask]
+            return torch.tensor(split_indices, dtype=torch.long)
 
         train_idx = get_split_indices(
             str(self.split_dir / 'train_regression_domains.parquet'),
