@@ -38,7 +38,10 @@ def run_get_test_predictions(
     dataset: TemporalDataset,
     weight_directory: Path,
     target: str,
+    experiment_name: str = None,
 ) -> None:
+    # Use experiment_name for saving if provided, otherwise use model name
+    save_name = experiment_name if experiment_name else model_arguments.model
     data = dataset[0]
     device = f'cuda:{model_arguments.device}' if torch.cuda.is_available() else 'cpu'
     device = torch.device(device)
@@ -65,6 +68,8 @@ def run_get_test_predictions(
         gps_attn_type=model_arguments.gps_attn_type,
         gps_attn_kwargs=gps_attn_kwargs,
         gps_local_mpnn=model_arguments.gps_local_mpnn,
+        # Predictor head type
+        predictor_type=model_arguments.predictor_type,
     ).to(device)
     model.load_state_dict(torch.load(weight_path, map_location=device))
     logging.info('Model Loaded.')
@@ -106,13 +111,13 @@ def run_get_test_predictions(
     plot_pred_target_distributions_histogram(
         preds=test_predictions,
         targets=test_targets,
-        model_name=model_arguments.model,
+        model_name=save_name,
         target=target,
     )
     plot_regression_scatter_tensor(
         preds=test_predictions,
         targets=test_targets,
-        model_name=model_arguments.model,
+        model_name=save_name,
         target=target,
     )
 
@@ -150,6 +155,7 @@ def main() -> None:
         processed_dir=cast(str, meta_args.processed_location),
         embedding_index_file=meta_args.embedding_index_file,
         embedding_folder=meta_args.embedding_folder,
+        fixed_split_dir=meta_args.fixed_split_dir,
     )
     logging.info('In-Memory Dataset loaded.')
     weight_directory = (
@@ -163,6 +169,7 @@ def main() -> None:
             dataset,
             weight_directory,
             target=meta_args.target_col,
+            experiment_name=experiment,
         )
 
 

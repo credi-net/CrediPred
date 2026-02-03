@@ -101,6 +101,15 @@ class MetaArguments:
             'help': 'Path to the folder containing embedding pickle files for PRE encoder.'
         },
     )
+    fixed_split_dir: Optional[str] = field(
+        default=None,
+        metadata={
+            'help': 'Path to directory containing DomainRel fixed split parquet files '
+            '(train_regression_domains.parquet, val_regression_domains.parquet, '
+            'test_regression_domains.parquet). If provided, uses this split instead of '
+            'random stratified splitting.'
+        },
+    )
     global_seed: int = field(
         default=1337,
         metadata={'help': 'Random seed to use for reproducibiility.'},
@@ -135,6 +144,8 @@ class MetaArguments:
             self.embedding_index_file = resolve_paths(self.embedding_index_file)
         if self.embedding_folder is not None:
             self.embedding_folder = resolve_paths(self.embedding_folder)
+        if self.fixed_split_dir is not None:
+            self.fixed_split_dir = resolve_paths(self.fixed_split_dir)
 
         if self.log_file_path is not None:
             self.log_file_path = str(get_root_dir() / self.log_file_path)
@@ -232,6 +243,15 @@ class ModelArguments:
         default='gin',
         metadata={
             'help': "Local MPNN type for GraphGPS. Choices: 'gin', 'gatedgcn', 'gat'."
+        },
+    )
+    # Predictor head type
+    predictor_type: str = field(
+        default='relu_sigmoid',
+        metadata={
+            'help': "Predictor head type. Choices: 'relu_sigmoid' (original), "
+            "'leaky_sigmoid' (LeakyReLU+Sigmoid), 'pure_sigmoid' (GELU+Sigmoid), "
+            "'no_sigmoid' (GELU only, unconstrained output)."
         },
     )
 

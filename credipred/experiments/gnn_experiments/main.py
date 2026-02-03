@@ -102,6 +102,7 @@ def main() -> None:
         processed_dir=cast(str, meta_args.processed_location),
         embedding_index_file=meta_args.embedding_index_file,
         embedding_folder=meta_args.embedding_folder,
+        fixed_split_dir=meta_args.fixed_split_dir,
     )  # Map to .to_cpu()
     logging.info('In-Memory Dataset loaded.')
 
