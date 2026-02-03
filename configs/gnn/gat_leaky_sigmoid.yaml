@@ -1,0 +1,43 @@
+MetaArguments:
+  log_file_path: "gat_leaky_sigmoid.log"
+  node_file: "data/CrediBench/dec2024/vertices.csv"
+  edge_file: "data/CrediBench/dec2024/edges.csv"
+  target_file: "data/CrediBench/dec2024/targets.csv"
+  processed_location: "data/CrediBench/dec2024/processed_dir/pc1"
+  weights_directory: "data/weights_leaky_sigmoid/"
+  database_folder: "data/CrediBench/dec2024/"
+
+  target_col: "pc1"
+  target_index_name: 'nid'
+  target_index_col: 0
+  edge_src_col: "src"
+  edge_dst_col: "dst"
+  index_col: 0
+  encoder_dict:
+    pre: PRE
+  embedding_index_file: "data/CrediBench/content_embedding/dec2024/embeddinggema-300m/dec2024_wetcontent_domains_index.pkl"
+  embedding_folder: "data/CrediBench/content_embedding/dec2024/embeddinggema-300m"
+  is_scratch_location: false
+  global_seed: 42
+
+
+ExperimentArguments:
+  exp_args:
+    GAT_leaky_sigmoid:
+      model_args:
+        model: "GAT"
+        num_layers: 3
+        hidden_channels: 256
+        num_neighbors: [30, 30, 30]
+        batch_size: 1024
+        dropout: 0.1
+        lr: 0.001
+        epochs: 100
+        runs: 1
+        device: 0
+        log_steps: 10
+        predictor_type: "leaky_sigmoid"
+      data_args:
+        task_name: "node-regression"
+        is_regression: true
+        num_test_shards: 2

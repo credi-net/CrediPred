@@ -1,0 +1,21 @@
+#!/bin/bash
+#SBATCH --job-name=GAT_no_sigmoid
+#SBATCH --output=slurm_logs/gps/gat-no-sigmoid-%j.out
+#SBATCH --error=slurm_logs/gps/gat-no-sigmoid-%j.err
+#SBATCH --time=23:59:59
+#SBATCH --qos=medium
+#SBATCH --gres=gpu:1
+#SBATCH --exclude=klein
+#SBATCH --mem=250G
+#SBATCH --cpus-per-task=16
+#SBATCH --partition=h100
+
+cd /slurm-storage/jiaxio/ws/CrediPred
+
+echo "Starting GAT NoSigmoid Experiment on $(hostname) at $(date)"
+echo "Current working directory: $(pwd)"
+
+uv run ./credipred/experiments/gnn_experiments/main.py \
+    --config-file configs/gnn/gat_no_sigmoid.yaml
+
+echo "Completed on $(hostname) at $(date)"

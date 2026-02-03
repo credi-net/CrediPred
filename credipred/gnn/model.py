@@ -41,6 +41,8 @@ class Model(torch.nn.Module):
         out_channels: int,
         num_layers: int,
         dropout: float,
+        # Predictor head type
+        predictor_type: str = 'relu_sigmoid',
     ):
         super().__init__()
         self.model_name = model_name
@@ -66,7 +68,9 @@ class Model(torch.nn.Module):
         self.output_linear = nn.Linear(
             in_features=hidden_channels, out_features=out_channels
         )
-        self.node_predictor = NodePredictor(in_dim=out_channels, out_dim=1)
+        self.node_predictor = NodePredictor(
+            in_dim=out_channels, out_dim=1, predictor_type=predictor_type
+        )
 
     def forward(self, x: Tensor, edge_index: Tensor | None = None) -> Tensor:
         x = self.input_linear(x)

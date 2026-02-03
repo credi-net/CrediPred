@@ -7,19 +7,58 @@ NormalizationType = Union[Type[nn.Identity], Type[nn.LayerNorm], Type[nn.BatchNo
 
 
 class NodePredictor(nn.Module):
+    """Node prediction head with configurable activation.
+
+    Args:
+        in_dim: Input dimension
+        hidden_dim_multiplier: Multiplier for hidden dimension
+        out_dim: Output dimension
+        predictor_type: Type of predictor head
+            - 'relu_sigmoid': Original (ReLU + Sigmoid) - has issues with extreme values
+            - 'leaky_sigmoid': LeakyReLU + Sigmoid - preserves negative information
+            - 'pure_sigmoid': GELU + Sigmoid - smooth activation, strict [0,1] output
+            - 'no_sigmoid': GELU only - no output constraint, best gradient flow
+    """
+
     def __init__(
-        self, in_dim: int, hidden_dim_multiplier: float = 0.5, out_dim: int = 1
+        self,
+        in_dim: int,
+        hidden_dim_multiplier: float = 0.5,
+        out_dim: int = 1,
+        predictor_type: str = 'relu_sigmoid',
     ):
         super().__init__()
+        self.predictor_type = predictor_type
         hidden_dim = int(hidden_dim_multiplier * in_dim)
         self.lin_node = nn.Linear(in_dim, hidden_dim)
         self.out = nn.Linear(hidden_dim, out_dim)
 
     def forward(self, x: Tensor) -> Tensor:
         x = self.lin_node(x)
-        x = x.relu()
-        x = self.out(x)
-        x = x.sigmoid()
+
+        if self.predictor_type == 'relu_sigmoid':
+            # Original: ReLU + Sigmoid (has issues with extreme values)
+            x = x.relu()
+            x = self.out(x)
+            x = x.sigmoid()
+        elif self.predictor_type == 'leaky_sigmoid':
+            # LeakyReLU preserves negative information + Sigmoid
+            x = nn.functional.leaky_relu(x, negative_slope=0.1)
+            x = self.out(x)
+            x = x.sigmoid()
+        elif self.predictor_type == 'pure_sigmoid':
+            # GELU (smooth, preserves negatives) + Sigmoid
+            x = nn.functional.gelu(x)
+            x = self.out(x)
+            x = x.sigmoid()
+        elif self.predictor_type == 'no_sigmoid':
+            # GELU only, no sigmoid - best gradient flow
+            x = nn.functional.gelu(x)
+            x = self.out(x)
+            # No sigmoid, output is unconstrained
+        else:
+            raise ValueError(f"Unknown predictor_type: {self.predictor_type}")
+
         return x
 
 
