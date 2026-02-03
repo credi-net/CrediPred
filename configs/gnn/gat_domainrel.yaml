@@ -37,7 +37,6 @@ ExperimentArguments:
         runs: 1
         device: 0
         log_steps: 10
-        predictor_type: "leaky_sigmoid"
       data_args:
         task_name: "node-regression"
         is_regression: true
