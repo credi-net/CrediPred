@@ -78,7 +78,7 @@ def plot_pred_target_distributions_bin_list(
     plt.rc('font', size=13)
     plt.xticks(np.arange(0, 1.1, 0.2))
     plt.yticks(np.arange(0, y_max + 200, 200))
-    # plt.yscale('log')  # 注释掉后使用普通线性计数
+    # plt.yscale('log')  # Use linear scale instead of log
     plt.xlabel('Score')
     plt.ylabel('Count')
     plt.legend()
