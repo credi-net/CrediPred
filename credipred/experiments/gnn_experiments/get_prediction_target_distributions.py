@@ -9,8 +9,8 @@ from tqdm import tqdm
 
 from credipred.dataset.temporal_dataset import TemporalDataset
 from credipred.encoders.encoder import Encoder
-from credipred.encoders.rni_encoding import RNIEncoder
 from credipred.encoders.pre_embedding_encoder import TextEmbeddingEncoder
+from credipred.encoders.rni_encoding import RNIEncoder
 from credipred.gnn.model import Model
 from credipred.utils.args import ModelArguments, parse_args
 from credipred.utils.logger import setup_logging
@@ -38,10 +38,7 @@ def run_get_test_predictions(
     dataset: TemporalDataset,
     weight_directory: Path,
     target: str,
-    experiment_name: str = None,
 ) -> None:
-    # Use experiment_name for saving if provided, otherwise use model name
-    save_name = experiment_name if experiment_name else model_arguments.model
     data = dataset[0]
     device = f'cuda:{model_arguments.device}' if torch.cuda.is_available() else 'cpu'
     device = torch.device(device)
@@ -50,11 +47,6 @@ def run_get_test_predictions(
     test_idx = dataset.get_idx_split()['test']
     logging.info(f'Length of testing indices: {len(test_idx)}')
     logging.info('Mapping returned.')
-    # Build GPS-specific attention kwargs if using GPS
-    gps_attn_kwargs = None
-    if model_arguments.model == 'GPS':
-        gps_attn_kwargs = {'dropout': model_arguments.gps_attn_dropout}
-
     model = Model(
         model_name=model_arguments.model,
         normalization=model_arguments.normalization,
@@ -63,13 +55,6 @@ def run_get_test_predictions(
         out_channels=model_arguments.embedding_dimension,
         num_layers=model_arguments.num_layers,
         dropout=model_arguments.dropout,
-        # GraphGPS specific parameters
-        gps_heads=model_arguments.gps_heads,
-        gps_attn_type=model_arguments.gps_attn_type,
-        gps_attn_kwargs=gps_attn_kwargs,
-        gps_local_mpnn=model_arguments.gps_local_mpnn,
-        # Predictor head type
-        predictor_type=model_arguments.predictor_type,
     ).to(device)
     model.load_state_dict(torch.load(weight_path, map_location=device))
     logging.info('Model Loaded.')
@@ -111,13 +96,13 @@ def run_get_test_predictions(
     plot_pred_target_distributions_histogram(
         preds=test_predictions,
         targets=test_targets,
-        model_name=save_name,
+        model_name=model_arguments.model,
         target=target,
     )
     plot_regression_scatter_tensor(
         preds=test_predictions,
         targets=test_targets,
-        model_name=save_name,
+        model_name=model_arguments.model,
         target=target,
     )
 
@@ -169,7 +154,6 @@ def main() -> None:
             dataset,
             weight_directory,
             target=meta_args.target_col,
-            experiment_name=experiment,
         )
 
 

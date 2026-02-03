@@ -4,7 +4,6 @@ from typing import List, Tuple
 
 import torch
 import torch.nn.functional as F
-import wandb
 from torch import Tensor
 from torch_geometric.loader import NeighborLoader
 from torcheval.metrics.functional import r2_score
@@ -39,9 +38,7 @@ def train(
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
         optimizer.zero_grad()
         batch = batch.to(device)
-        # For GPS on a single large graph, use batch=None to enable global attention
-        # across ALL sampled nodes (not just within each seed's neighborhood)
-        preds = model(batch.x, batch.edge_index, batch=None).squeeze()
+        preds = model(batch.x, batch.edge_index).squeeze()
         targets = batch.y
         train_mask = batch.train_mask
         if train_mask.sum() == 0:
@@ -79,9 +76,7 @@ def train_(
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
         optimizer.zero_grad()
         batch = batch.to(device)
-        # For GPS on a single large graph, use batch=None to enable global attention
-        # across ALL sampled nodes (not just within each seed's neighborhood)
-        preds = model(batch.x, batch.edge_index, batch=None).squeeze()
+        preds = model(batch.x, batch.edge_index).squeeze()
         targets = batch.y
         train_mask = batch.train_mask
         if train_mask.sum() == 0:
@@ -122,9 +117,7 @@ def evaluate(
     all_targets = []
     for batch in loader:
         batch = batch.to(device)
-        # For GPS on a single large graph, use batch=None to enable global attention
-        # across ALL sampled nodes (not just within each seed's neighborhood)
-        preds = model(batch.x, batch.edge_index, batch=None).squeeze()
+        preds = model(batch.x, batch.edge_index).squeeze()
         targets = batch.y
         mask = getattr(batch, mask_name)
         if mask.sum() == 0:
@@ -218,17 +211,7 @@ def run_gnn_baseline(
     global_best_val_loss = float('inf')
     best_state_dict = None
     logging.info('*** Training ***')
-
-    # Get current learning rate for logging
-    current_lr = model_arguments.lr
-    global_step = 0
-
     for run in tqdm(range(model_arguments.runs), desc='Runs'):
-        # Build GPS-specific attention kwargs if using GPS
-        gps_attn_kwargs = None
-        if model_arguments.model == 'GPS':
-            gps_attn_kwargs = {'dropout': model_arguments.gps_attn_dropout}
-
         model = Model(
             model_name=model_arguments.model,
             normalization=model_arguments.normalization,
@@ -237,32 +220,13 @@ def run_gnn_baseline(
             out_channels=model_arguments.embedding_dimension,
             num_layers=model_arguments.num_layers,
             dropout=model_arguments.dropout,
-            # GraphGPS specific parameters
-            gps_heads=model_arguments.gps_heads,
-            gps_attn_type=model_arguments.gps_attn_type,
-            gps_attn_kwargs=gps_attn_kwargs,
-            gps_local_mpnn=model_arguments.gps_local_mpnn,
         ).to(device)
-        optimizer = torch.optim.AdamW(
-            model.parameters(),
-            lr=model_arguments.lr,
-            weight_decay=model_arguments.weight_decay,
-        )
-
-        # Log model architecture to wandb (only on first run)
-        if run == 0:
-            wandb.watch(model, log='all', log_freq=100)
-
+        optimizer = torch.optim.AdamW(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch_mse: List[Tuple[float, float, float, float, float]] = []
         loss_tuple_epoch_r2: List[Tuple[float, float, float]] = []
         epoch_avg_preds: List[List[float]] = []
         epoch_avg_targets: List[List[float]] = []
-
-        # Early stopping variables
-        best_val_loss_in_run = float('inf')
-        epochs_without_improvement = 0
-
-        for epoch in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
+        for _ in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
             _, _, batch_preds, batch_targets = train_(model, train_loader, optimizer)
             epoch_avg_preds.append(batch_preds)
             epoch_avg_targets.append(batch_targets)
@@ -273,53 +237,6 @@ def run_gnn_baseline(
             test_loss, test_mean_baseline_loss, test_random_baseline_loss, test_r2 = (
                 evaluate(model, test_loader, 'test_mask')
             )
-
-            # Log metrics to wandb
-            global_step += 1
-            current_lr = optimizer.param_groups[0]['lr']
-
-            # GPU memory tracking
-            gpu_memory_allocated = 0
-            gpu_memory_reserved = 0
-            gpu_utilization = 0
-            if torch.cuda.is_available():
-                gpu_memory_allocated = torch.cuda.memory_allocated(device) / 1e9  # GB
-                gpu_memory_reserved = torch.cuda.memory_reserved(device) / 1e9  # GB
-                gpu_max_memory = torch.cuda.max_memory_allocated(device) / 1e9  # GB
-
-            wandb.log(
-                {
-                    # Training metrics
-                    'train/loss': train_loss,
-                    'train/r2': train_r2,
-                    # Validation metrics
-                    'val/loss': valid_loss,
-                    'val/r2': valid_r2,
-                    'val/mean_baseline_loss': valid_mean_baseline_loss,
-                    # Test metrics
-                    'test/loss': test_loss,
-                    'test/r2': test_r2,
-                    'test/mean_baseline_loss': test_mean_baseline_loss,
-                    'test/random_baseline_loss': test_random_baseline_loss,
-                    # Learning rate
-                    'train/learning_rate': current_lr,
-                    # GPU metrics
-                    'gpu/memory_allocated_gb': gpu_memory_allocated,
-                    'gpu/memory_reserved_gb': gpu_memory_reserved,
-                    'gpu/max_memory_allocated_gb': gpu_max_memory
-                    if torch.cuda.is_available()
-                    else 0,
-                    # Progress tracking
-                    'progress/run': run,
-                    'progress/epoch': epoch,
-                    'progress/global_step': global_step,
-                    # Best validation loss tracking
-                    'best/val_loss': global_best_val_loss
-                    if valid_loss >= global_best_val_loss
-                    else valid_loss,
-                }
-            )
-
             result = (
                 train_loss,
                 valid_loss,
@@ -336,28 +253,6 @@ def run_gnn_baseline(
             if valid_loss < global_best_val_loss:
                 global_best_val_loss = valid_loss
                 best_state_dict = model.state_dict()
-                # Log best model checkpoint info
-                wandb.run.summary['best_val_loss'] = global_best_val_loss
-                wandb.run.summary['best_epoch'] = epoch
-                wandb.run.summary['best_run'] = run
-
-            # Early stopping logic
-            if valid_loss < best_val_loss_in_run:
-                best_val_loss_in_run = valid_loss
-                epochs_without_improvement = 0
-            else:
-                epochs_without_improvement += 1
-
-            if (
-                model_arguments.patience > 0
-                and epochs_without_improvement >= model_arguments.patience
-            ):
-                logging.info(
-                    f'Early stopping at epoch {epoch}. '
-                    f'No improvement for {model_arguments.patience} epochs. '
-                    f'Best val loss in run: {best_val_loss_in_run:.4f}'
-                )
-                break
 
         final_avg_preds.append(mean_across_lists(epoch_avg_preds))
         final_avg_targets.append(mean_across_lists(epoch_avg_targets))
@@ -369,48 +264,23 @@ def run_gnn_baseline(
     best_model_path = best_model_dir / 'best_model.pt'
     torch.save(best_state_dict, best_model_path)
     logging.info(f'Model: {model_arguments} weights saved to: {best_model_path}')
-
-    # Save model as wandb artifact
-    model_artifact = wandb.Artifact(
-        name=f'{model_arguments.model}-best-model',
-        type='model',
-        description=f'Best model checkpoint for {model_arguments.model}',
-    )
-    model_artifact.add_file(str(best_model_path))
-    wandb.log_artifact(model_artifact)
-
     logging.info('*** Statistics ***')
-    statistics = logger.get_statistics()
-    avg_statistics = logger.get_avg_statistics()
-    logging.info(statistics)
-    logging.info(avg_statistics)
-
-    # Log final statistics to wandb
-    error_10 = logger.per_run_within_error(
-        preds=final_avg_preds, targets=final_avg_targets, percent=10
+    logging.info(logger.get_statistics())
+    logging.info(logger.get_avg_statistics())
+    logging.info(
+        logger.per_run_within_error(
+            preds=final_avg_preds, targets=final_avg_targets, percent=10
+        )
     )
-    error_5 = logger.per_run_within_error(
-        preds=final_avg_preds, targets=final_avg_targets, percent=5
+    logging.info(
+        logger.per_run_within_error(
+            preds=final_avg_preds, targets=final_avg_targets, percent=5
+        )
     )
-    error_1 = logger.per_run_within_error(
-        preds=final_avg_preds, targets=final_avg_targets, percent=1
-    )
-
-    logging.info(error_10)
-    logging.info(error_5)
-    logging.info(error_1)
-
-    # Log summary statistics to wandb
-    wandb.run.summary.update(
-        {
-            'final/model': model_arguments.model,
-            'final/best_val_loss': global_best_val_loss,
-            'final/within_10pct_error': error_10,
-            'final/within_5pct_error': error_5,
-            'final/within_1pct_error': error_1,
-            'final/total_epochs': model_arguments.epochs * model_arguments.runs,
-            'final/total_runs': model_arguments.runs,
-        }
+    logging.info(
+        logger.per_run_within_error(
+            preds=final_avg_preds, targets=final_avg_targets, percent=1
+        )
     )
     logging.info('Constructing plots')
     plot_pred_target_distributions_bin_list(

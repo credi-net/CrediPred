@@ -121,9 +121,6 @@ def main() -> None:
                     'lr': experiment_arg.model_args.lr,
                     'epochs': experiment_arg.model_args.epochs,
                     'runs': experiment_arg.model_args.runs,
-                    'gps_heads': experiment_arg.model_args.gps_heads,
-                    'gps_attn_type': experiment_arg.model_args.gps_attn_type,
-                    'gps_attn_dropout': experiment_arg.model_args.gps_attn_dropout,
                     'task_name': experiment_arg.data_args.task_name,
                     'is_regression': experiment_arg.data_args.is_regression,
                 }

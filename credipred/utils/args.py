@@ -224,36 +224,6 @@ class ModelArguments:
     log_steps: int = field(
         default=50, metadata={'help': 'Step mod epoch to print logger.'}
     )
-    # GraphGPS specific parameters
-    gps_heads: int = field(
-        default=4,
-        metadata={'help': 'Number of attention heads for GraphGPS global attention.'},
-    )
-    gps_attn_type: str = field(
-        default='multihead',
-        metadata={
-            'help': "Attention type for GraphGPS. Choices: 'multihead' or 'performer'."
-        },
-    )
-    gps_attn_dropout: float = field(
-        default=0.1,
-        metadata={'help': 'Dropout rate for GraphGPS attention.'},
-    )
-    gps_local_mpnn: str = field(
-        default='gin',
-        metadata={
-            'help': "Local MPNN type for GraphGPS. Choices: 'gin', 'gatedgcn', 'gat'."
-        },
-    )
-    # Predictor head type
-    predictor_type: str = field(
-        default='relu_sigmoid',
-        metadata={
-            'help': "Predictor head type. Choices: 'relu_sigmoid' (original), "
-            "'leaky_sigmoid' (LeakyReLU+Sigmoid), 'pure_sigmoid' (GELU+Sigmoid), "
-            "'no_sigmoid' (GELU only, unconstrained output)."
-        },
-    )
 
 
 @dataclass
