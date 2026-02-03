@@ -41,7 +41,7 @@ def train_epoch(
     for batch in train_loader:
         optimizer.zero_grad()
         batch = batch.to(device)
-        preds = model(batch.x, batch.edge_index, batch=None).squeeze()
+        preds = model(batch.x, batch.edge_index).squeeze()
         targets = batch.y
         train_mask = batch.train_mask
 
@@ -78,7 +78,7 @@ def evaluate(
 
     for batch in loader:
         batch = batch.to(device)
-        preds = model(batch.x, batch.edge_index, batch=None).squeeze()
+        preds = model(batch.x, batch.edge_index).squeeze()
         targets = batch.y
         mask = getattr(batch, mask_name)
 
