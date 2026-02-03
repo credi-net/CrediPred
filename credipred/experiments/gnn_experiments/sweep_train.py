@@ -215,15 +215,17 @@ def main():
         test_loss, test_r2 = evaluate(model, test_loader, 'test_mask')
 
         # Log metrics to wandb
-        wandb.log({
-            'epoch': epoch,
-            'train/loss': train_loss,
-            'train/r2': train_r2,
-            'val/loss': val_loss,
-            'val/r2': val_r2,
-            'test/loss': test_loss,
-            'test/r2': test_r2,
-        })
+        wandb.log(
+            {
+                'epoch': epoch,
+                'train/loss': train_loss,
+                'train/r2': train_r2,
+                'val/loss': val_loss,
+                'val/r2': val_r2,
+                'test/loss': test_loss,
+                'test/r2': test_r2,
+            }
+        )
 
         # Early stopping
         if val_loss < best_val_loss:

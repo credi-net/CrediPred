@@ -28,9 +28,15 @@ def load_domainrel_split(split_dir: str) -> Dict[str, pd.DataFrame]:
         Dict with 'train', 'valid', 'test' DataFrames containing 'domain' and 'label'.
     """
     return {
-        'train': pd.read_parquet(os.path.join(split_dir, 'train_regression_domains.parquet')),
-        'valid': pd.read_parquet(os.path.join(split_dir, 'val_regression_domains.parquet')),
-        'test': pd.read_parquet(os.path.join(split_dir, 'test_regression_domains.parquet')),
+        'train': pd.read_parquet(
+            os.path.join(split_dir, 'train_regression_domains.parquet')
+        ),
+        'valid': pd.read_parquet(
+            os.path.join(split_dir, 'val_regression_domains.parquet')
+        ),
+        'test': pd.read_parquet(
+            os.path.join(split_dir, 'test_regression_domains.parquet')
+        ),
     }
 
 
@@ -179,7 +185,9 @@ class TemporalDataset(InMemoryDataset):
 
             total_domains = sum(len(df) for df in split_data.values())
             logging.info(f'Total labeled domains from DomainRel: {total_domains}')
-            logging.info(f'Train: {len(split_data["train"])}, Valid: {len(split_data["valid"])}, Test: {len(split_data["test"])}')
+            logging.info(
+                f'Train: {len(split_data["train"])}, Valid: {len(split_data["valid"])}, Test: {len(split_data["test"])}'
+            )
 
             # Map domains to node indices, skip domains not in graph
             train_idx_list = []
@@ -216,7 +224,9 @@ class TemporalDataset(InMemoryDataset):
                     test_idx_list.append(idx)
                     score[idx] = label
 
-            logging.info(f'Mapped - Train: {len(train_idx_list)}, Valid: {len(valid_idx_list)}, Test: {len(test_idx_list)}')
+            logging.info(
+                f'Mapped - Train: {len(train_idx_list)}, Valid: {len(valid_idx_list)}, Test: {len(test_idx_list)}'
+            )
 
             train_idx = torch.tensor(train_idx_list, dtype=torch.long)
             valid_idx = torch.tensor(valid_idx_list, dtype=torch.long)
