@@ -10,7 +10,7 @@ import torch
 from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
 
-from credipred.dataset.temporal_dataset import TemporalDataset
+from credipred.dataset.temporal_dataset import TemporalDatasetGlobalSplit
 from credipred.encoders.categorical_encoder import CategoricalEncoder
 from credipred.encoders.encoder import Encoder
 from credipred.encoders.norm_encoding import NormEncoder
@@ -38,7 +38,7 @@ parser.add_argument(
 
 def run_forward_get_embeddings(
     model_arguments: ModelArguments,
-    dataset: TemporalDataset,
+    dataset: TemporalDatasetGlobalSplit,
     weight_directory: Path,
 ) -> None:
     root = get_root_dir()
@@ -110,7 +110,7 @@ def run_forward_get_embeddings(
         write_domain_emb_parquet(
             rows=parquet_rows,
             directory_path=weight_directory,
-            file_name='dqr_domain_gat_from_text_embeddings.parquet',
+            file_name='dqr_domain_gat_from_text_embeddings_updated.parquet',
         )
 
 
@@ -137,7 +137,7 @@ def write_domain_emb_parquet(rows: Dict, directory_path: Path, file_name: str) -
 
 def main() -> None:
     root = get_root_dir()
-    scratch = get_scratch()
+    get_scratch()
     args = parser.parse_args()
     config_file_path = root / args.config_file
     meta_args, experiment_args = parse_args(config_file_path)
@@ -157,7 +157,7 @@ def main() -> None:
         encoder_class = encoder_classes[value]
         encoding_dict[index] = encoder_class
 
-    dataset = TemporalDataset(
+    dataset = TemporalDatasetGlobalSplit(
         root=f'{root}/data/',
         node_file=cast(str, meta_args.node_file),
         edge_file=cast(str, meta_args.edge_file),
@@ -168,7 +168,9 @@ def main() -> None:
         index_col=meta_args.index_col,
         encoding=encoding_dict,
         seed=meta_args.global_seed,
-        processed_dir=f'{scratch}/{meta_args.processed_location}',
+        processed_dir=cast(str, meta_args.processed_location),
+        embedding_location=cast(str, meta_args.embedding_location),
+        embedding_lookup=meta_args.embedding_lookup,
     )
     logging.info('In-Memory Dataset loaded.')
     weight_directory = (
