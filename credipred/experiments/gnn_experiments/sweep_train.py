@@ -205,6 +205,8 @@ def main():
 
     # Training loop
     best_val_loss = float('inf')
+    best_model_state = None
+    best_metrics = {}
     patience = 20
     patience_counter = 0
     epochs = 100
@@ -231,6 +233,17 @@ def main():
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             patience_counter = 0
+            # Save best model state
+            best_model_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
+            best_metrics = {
+                'best_val_loss': best_val_loss,
+                'best_val_r2': val_r2,
+                'best_epoch': epoch,
+                'test_loss_at_best_val': test_loss,
+                'test_r2_at_best_val': test_r2,
+                'train_loss_at_best_val': train_loss,
+                'train_r2_at_best_val': train_r2,
+            }
             # Log best metrics
             wandb.run.summary['best_val_loss'] = best_val_loss
             wandb.run.summary['best_epoch'] = epoch
@@ -241,6 +254,50 @@ def main():
         if patience_counter >= patience:
             logging.info(f'Early stopping at epoch {epoch}')
             break
+
+    # Save checkpoint with model config, weights, and metrics
+    if best_model_state is not None:
+        checkpoint = {
+            # Model weights
+            'model_state_dict': best_model_state,
+            # Model config/hyperparameters
+            'config': {
+                'model': model_name,
+                'num_layers': num_layers,
+                'hidden_channels': hidden_channels,
+                'dropout': dropout,
+                'lr': lr,
+                'weight_decay': weight_decay,
+                'batch_size': batch_size,
+                'num_neighbors': num_neighbors,
+                'in_channels': data.num_features,
+                'out_channels': 128,
+                'normalization': 'BatchNorm',
+            },
+            # Metrics
+            'metrics': best_metrics,
+            # Wandb info
+            'wandb_run_id': wandb.run.id,
+            'wandb_run_name': wandb.run.name,
+        }
+
+        # Create save directory if not exists
+        save_dir = root / 'data' / 'weights_domainrel' / 'sweep'
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        # Save checkpoint
+        save_path = save_dir / f'{wandb.run.id}.pt'
+        torch.save(checkpoint, save_path)
+        logging.info(f'Saved checkpoint to {save_path}')
+
+        # Log artifact to wandb
+        artifact = wandb.Artifact(
+            name=f'model-{wandb.run.id}',
+            type='model',
+            metadata=checkpoint['config'] | checkpoint['metrics'],
+        )
+        artifact.add_file(str(save_path))
+        wandb.log_artifact(artifact)
 
     wandb.finish()
 
