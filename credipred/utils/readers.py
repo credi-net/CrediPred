@@ -157,6 +157,8 @@ def _encode_columns(df: pd.DataFrame, encoders: Dict) -> torch.Tensor:
 
 def load_node_csv(
     path: str,
+    embedding_location: Path,
+    embedding_lookup: str,
     index_col: int,
     encoders: Dict | None = None,
     chunk_size: int = 500_000,
@@ -198,9 +200,6 @@ def load_node_csv(
                 xs.append(
                     encoder(
                         df.index,
-                        get_embeddings_lookup(
-                            folder_name='data/dec_2024_domain/embeddings/dec2024_wetcontent_domains_index.pkl'
-                        ),
                         scratch / 'data' / 'dec_2024_domain' / 'embeddings',
                     )
                 )

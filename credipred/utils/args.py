@@ -44,11 +44,20 @@ class MetaArguments:
     split_folder: Union[str, List[str]] = field(
         metadata={'help': 'The folder containing the splits.'},
     )
+    embedding_location: Union[str, List[str]] = field(
+        metadata={'help': 'The folder containing the pre-trained text embeddings.'},
+    )
     processed_location: Union[str, List[str]] = field(
         metadata={'help': 'The location to save the processed feature matrix.'},
     )
     weights_directory: Union[str, List[str]] = field(
         metadata={'help': 'The location to save and load model weights.'},
+    )
+    embedding_lookup: str = field(
+        default='dec2024_wetcontent_domains_index.pkl',
+        metadata={
+            'help': 'A pkl file creating a lookup table for domains -> embeddings.'
+        },
     )
     target_col: str = field(
         default='cr_score',
