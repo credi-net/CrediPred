@@ -7,7 +7,9 @@ import torch.nn.functional as F
 from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
 
-from credipred.dataset.temporal_dataset import TemporalBinaryDataset
+from credipred.dataset.temporal_dataset import (
+    TemporalBinaryDatasetGlobalSplits,
+)
 from credipred.gnn.model import Model
 from credipred.utils.args import DataArguments, ModelArguments
 from credipred.utils.enums import Metric, TrainingMethods
@@ -144,7 +146,7 @@ def run_binary_class_gnn_baseline(
     data_arguments: DataArguments,
     model_arguments: ModelArguments,
     weight_directory: Path,
-    dataset: TemporalBinaryDataset,
+    dataset: TemporalBinaryDatasetGlobalSplits,
 ) -> None:
     data = dataset[0]
     split_idx = dataset.get_idx_split()

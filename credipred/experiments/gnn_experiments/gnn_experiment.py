@@ -9,7 +9,7 @@ from torch_geometric.loader import NeighborLoader
 from torcheval.metrics.functional import r2_score
 from tqdm import tqdm
 
-from credipred.dataset.temporal_dataset import TemporalDataset
+from credipred.dataset.temporal_dataset import TemporalDatasetGlobalSplit
 from credipred.gnn.model import Model
 from credipred.utils.args import DataArguments, ModelArguments
 from credipred.utils.logger import Logger
@@ -149,7 +149,7 @@ def run_gnn_baseline(
     data_arguments: DataArguments,
     model_arguments: ModelArguments,
     weight_directory: Path,
-    dataset: TemporalDataset,
+    dataset: TemporalDatasetGlobalSplit,
 ) -> None:
     data = dataset[0]
     split_idx = dataset.get_idx_split()
