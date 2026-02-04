@@ -168,6 +168,7 @@ def main() -> None:
         encoding=encoding_dict,
         seed=meta_args.global_seed,
         processed_dir=cast(str, meta_args.processed_location),
+        split_dir=cast(str, meta_args.split_folder),
         embedding_location=cast(str, meta_args.embedding_location),
         embedding_lookup=meta_args.embedding_lookup,
     )
