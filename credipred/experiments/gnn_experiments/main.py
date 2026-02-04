@@ -89,6 +89,8 @@ def main() -> None:
             encoding=encoding_dict,
             seed=meta_args.global_seed,
             processed_dir=cast(str, meta_args.processed_location),
+            embedding_location=cast(str, meta_args.embedding_location),
+            embedding_lookup=meta_args.embedding_lookup,
         )  # Map to .to_cpu()
     else:
         logging.info('Task in use: Regression')
@@ -107,6 +109,8 @@ def main() -> None:
             encoding=encoding_dict,
             seed=meta_args.global_seed,
             processed_dir=cast(str, meta_args.processed_location),
+            embedding_location=cast(str, meta_args.embedding_location),
+            embedding_lookup=meta_args.embedding_lookup,
         )  # Map to .to_cpu()
     logging.info('In-Memory Dataset loaded.')
 

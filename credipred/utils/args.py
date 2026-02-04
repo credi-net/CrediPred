@@ -131,6 +131,7 @@ class MetaArguments:
         self.database_folder = resolve_paths(self.database_folder)
         self.split_folder = resolve_paths(self.split_folder)
         self.processed_location = resolve_paths(self.processed_location)
+        self.embedding_location = resolve_paths(self.embedding_location)
 
         if self.log_file_path is not None:
             self.log_file_path = str(get_root_dir() / self.log_file_path)

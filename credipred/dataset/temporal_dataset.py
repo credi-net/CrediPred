@@ -721,6 +721,7 @@ class TemporalBinaryDatasetGlobalSplits(InMemoryDataset):
         else:
             self.embedding_location = pathlib.Path()
 
+        logging.info(f'Embedding location: {self.embedding_location}')
         self.embedding_lookup = embedding_lookup
         if split_dir:
             self.split_dir = pathlib.Path(split_dir)
