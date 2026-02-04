@@ -21,7 +21,7 @@ from credipred.gnn.model import Model
 from credipred.utils.args import ModelArguments, parse_args
 from credipred.utils.domain_handler import reverse_domain
 from credipred.utils.logger import setup_logging
-from credipred.utils.path import get_root_dir, get_scratch
+from credipred.utils.path import get_root_dir
 from credipred.utils.seed import seed_everything
 
 parser = argparse.ArgumentParser(
@@ -137,11 +137,10 @@ def write_domain_emb_parquet(rows: Dict, directory_path: Path, file_name: str) -
 
 def main() -> None:
     root = get_root_dir()
-    get_scratch()
     args = parser.parse_args()
     config_file_path = root / args.config_file
     meta_args, experiment_args = parse_args(config_file_path)
-    setup_logging(meta_args.log_file_path)
+    setup_logging('DQR_EMBEDDINGS:_' + str(meta_args.log_file_path))
     seed_everything(meta_args.global_seed)
 
     encoder_classes: Dict[str, Encoder] = {
