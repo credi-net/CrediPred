@@ -9,6 +9,20 @@ resolution-markers = [
 ]
 
 [[package]]
+name = "adjusttext"
+version = "1.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "matplotlib" },
+    { name = "numpy" },
+    { name = "scipy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4c/d4/6585f3b6fdb75648bca294664af4becc8aa2fb3fb08f4e4e9fd27e10d773/adjusttext-1.3.0.tar.gz", hash = "sha256:4ab75cd4453af4828876ac3e964f2c49be642ea834f0c1f7449558d5f12cbca1", size = 15724, upload-time = "2024-10-31T16:45:36.101Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/53/1c/8feedd607cc14c5df9aef74fe3af9a99bf660743b842a9b5b1865326b4aa/adjustText-1.3.0-py3-none-any.whl", hash = "sha256:da23d7b24b6db5ffa039bb136bfa556207365e32f48ac74b07ad26dd485bc691", size = 13154, upload-time = "2024-10-31T16:45:35.227Z" },
+]
+
+[[package]]
 name = "aiohappyeyeballs"
 version = "2.6.1"
 source = { registry = "https://pypi.org/simple" }
@@ -507,6 +521,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "adjusttext" },
     { name = "ipykernel" },
     { name = "isort" },
     { name = "matplotlib" },
@@ -518,6 +533,7 @@ dev = [
     { name = "pytest" },
     { name = "ruff" },
     { name = "seaborn" },
+    { name = "textalloc" },
     { name = "tqdm" },
     { name = "types-pyyaml" },
 ]
@@ -549,6 +565,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 analytics = []
 dev = [
+    { name = "adjusttext", specifier = ">=1.3.0" },
     { name = "ipykernel", specifier = ">=6.29.5" },
     { name = "isort", specifier = ">=6.0.1" },
     { name = "matplotlib", specifier = ">=3.9.4" },
@@ -560,6 +577,7 @@ dev = [
     { name = "pytest", specifier = ">=8.4.0" },
     { name = "ruff", specifier = ">=0.11.13" },
     { name = "seaborn", specifier = ">=0.13.2" },
+    { name = "textalloc", specifier = ">=1.2.1" },
     { name = "tqdm", specifier = ">=4.67.1" },
     { name = "types-pyyaml", specifier = ">=6.0.12.20240917" },
 ]
@@ -2949,6 +2967,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/83/d3/803453b36afefb7c2bb238361cd4ae6125a569b4db67cd9e79846ba2d68c/sympy-1.14.0.tar.gz", hash = "sha256:d3d3fe8df1e5a0b42f0e7bdf50541697dbe7d23746e894990c030e2b05e72517", size = 7793921, upload-time = "2025-04-27T18:05:01.611Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a2/09/77d55d46fd61b4a135c444fc97158ef34a095e5681d0a6c10b75bf356191/sympy-1.14.0-py3-none-any.whl", hash = "sha256:e091cc3e99d2141a0ba2847328f5479b05d94a6635cb96148ccb3f34671bd8f5", size = 6299353, upload-time = "2025-04-27T18:04:59.103Z" },
+]
+
+[[package]]
+name = "textalloc"
+version = "1.2.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "matplotlib" },
+    { name = "numpy" },
+    { name = "packaging" },
+    { name = "tqdm" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/90/55/570b74e7ad3556e989c0aa3747d5b9039abd524cc8258f6830df8c50e14a/textalloc-1.2.1.tar.gz", hash = "sha256:297ab2bcc249521ce9a88c44a16092c040b1e53ad017f745cbd5c9a05521fb9e", size = 20440, upload-time = "2025-08-06T08:17:27.735Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/22/8a/16c628d516eaf5ca9f61bcb7d8b56f529f9b8fcaa52f068d868722d0d318/textalloc-1.2.1-py3-none-any.whl", hash = "sha256:8dda88a151ded1531fde0660051254647a3df2a764ffc7e7bafbd44425e49f55", size = 20485, upload-time = "2025-08-06T08:17:26.284Z" },
 ]
 
 [[package]]
