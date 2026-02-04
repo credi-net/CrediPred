@@ -179,7 +179,7 @@ def load_node_csv(
         (torch.Tensor or None, dict, pandas.Index)
             Feature tensor (or None), mapping from node id to index, and row index.
     """
-    scratch = get_scratch()
+    get_scratch()
     dfs = []
 
     with pd.read_csv(path, index_col=index_col, chunksize=chunk_size) as reader:
@@ -200,7 +200,8 @@ def load_node_csv(
                 xs.append(
                     encoder(
                         df.index,
-                        scratch / 'data' / 'dec_2024_domain' / 'embeddings',
+                        embedding_location,
+                        embedding_lookup,
                     )
                 )
             else:
