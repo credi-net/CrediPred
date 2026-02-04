@@ -16,7 +16,7 @@ from credipred.utils.readers import get_embeddings_lookup
 
 
 class TextEmbeddingEncoder(Encoder):
-    def __init__(self, default_dimension: int, max_cache_size: int = 10):
+    def __init__(self, default_dimension: int, max_cache_size: int = 20):
         self.default_dimension = default_dimension
         self.max_cache_size = max_cache_size
 
