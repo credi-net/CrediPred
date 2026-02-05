@@ -65,6 +65,8 @@ def run_get_test_predictions(
     model.eval()
 
     test_targets = dataset[0].y[test_idx]
+    mask = test_targets != -1.0
+    test_targets = test_targets[mask]
     logging.info(f'Target values: {test_targets}')
     count = 0
     for pred in test_targets:
