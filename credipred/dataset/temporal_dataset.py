@@ -19,6 +19,7 @@ from credipred.utils.readers import (
 from credipred.utils.target_generation import (
     generate_exact_binary_targets_csv,
     generate_exact_targets_csv,
+    reverse_domain,
 )
 
 # class TemporalDataset(InMemoryDataset):
@@ -1428,7 +1429,15 @@ class TemporalBinaryDatasetAllGlobalSplits(InMemoryDataset):
             try:
                 mapping_index.append(mapping[domain.strip()])
             except KeyError:
-                logging.info(f'CRITICAL: {domain.strip()} is not found in the mapping.')
+                logging.info(
+                    f'{domain.strip()} is not found in the mapping. Attempting the reversed domain.'
+                )
+                try:
+                    mapping_index.append(mapping[reverse_domain(domain.strip())])
+                except KeyError:
+                    logging.info(
+                        f'Critical {reverse_domain(domain.strip())} is not found in the mapping.'
+                    )
 
         df_target.index = mapping_index
         logging.info(f'Size of mapped target dataframe: {df_target.shape}')
