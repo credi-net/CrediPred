@@ -66,7 +66,6 @@ def run_get_test_predictions(
 
     test_targets = dataset[0].y[test_idx]
     mask = test_targets != -1.0
-    test_targets = test_targets[mask]
     logging.info(f'Target values: {test_targets}')
     count = 0
     for pred in test_targets:
@@ -105,7 +104,7 @@ def run_get_test_predictions(
 
     logging.info(f'Predicted values that are out of bounds: {count}')
 
-    abs_errors = (test_predictions - test_targets).abs()
+    abs_errors = (test_predictions[mask] - test_targets[mask]).abs()
 
     min_error = abs_errors.min().item()
     max_error = abs_errors.max().item()
