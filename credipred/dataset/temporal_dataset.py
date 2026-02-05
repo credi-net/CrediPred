@@ -18,6 +18,28 @@ from credipred.utils.readers import (
 from credipred.utils.target_generation import generate_exact_targets_csv
 
 
+def load_domainrel_split(split_dir: str) -> Dict[str, pd.DataFrame]:
+    """Load DomainRel fixed split parquet files.
+
+    Args:
+        split_dir: Directory containing train/val/test parquet files.
+
+    Returns:
+        Dict with 'train', 'valid', 'test' DataFrames containing 'domain' and 'label'.
+    """
+    return {
+        'train': pd.read_parquet(
+            os.path.join(split_dir, 'train_regression_domains.parquet')
+        ),
+        'valid': pd.read_parquet(
+            os.path.join(split_dir, 'val_regression_domains.parquet')
+        ),
+        'test': pd.read_parquet(
+            os.path.join(split_dir, 'test_regression_domains.parquet')
+        ),
+    }
+
+
 class TemporalDataset(InMemoryDataset):
     """Graph dataset with temporal / versioned preprocessing and target generation.
 
@@ -46,6 +68,9 @@ class TemporalDataset(InMemoryDataset):
         pre_transform: Optional[Callable] = None,
         seed: int = 42,
         processed_dir: Optional[str] = None,
+        embedding_index_file: Optional[str] = None,
+        embedding_folder: Optional[str] = None,
+        fixed_split_dir: Optional[str] = None,
     ):
         """Initialize the dataset configuration and load processed data if present.
 
@@ -82,6 +107,10 @@ class TemporalDataset(InMemoryDataset):
                 Random seed for dataset splitting.
             processed_dir : Optional[str]
                 Optional override for processed data directory.
+            embedding_index_file : Optional[str]
+                Path to the domain-to-embedding-file index pickle for PRE encoder.
+            embedding_folder : Optional[str]
+                Path to the folder containing embedding pickle files for PRE encoder.
         """
         self.node_file = node_file
         self.edge_file = edge_file
@@ -98,6 +127,9 @@ class TemporalDataset(InMemoryDataset):
         self.encoding = encoding
         self.seed = seed
         self._custome_processed_dir = processed_dir
+        self.embedding_index_file = embedding_index_file
+        self.embedding_folder = embedding_folder
+        self.fixed_split_dir = fixed_split_dir
         super().__init__(root, transform, pre_transform)
         self.data, self.slices = torch.load(self.processed_paths[0], weights_only=False)
 
@@ -121,6 +153,8 @@ class TemporalDataset(InMemoryDataset):
     @property
     def processed_file_names(self) -> List[str]:
         """Return the list of processed file names."""
+        if self.fixed_split_dir is not None:
+            return ['data_fixed_split.pt']
         return ['data.pt']
 
     def download(self) -> None:
@@ -130,54 +164,140 @@ class TemporalDataset(InMemoryDataset):
         """Generate targets, construct graph tensors, and create train/valid/test splits."""
         node_path = os.path.join(self.raw_dir, self.node_file)
         edge_path = os.path.join(self.raw_dir, self.edge_file)
-        target_path = os.path.join(self.raw_dir, self.target_file)
-        if os.path.exists(target_path):
-            logging.info('Target file already exists.')
-        else:
-            logging.info('Generating target file.')
-            dqr = get_full_dict()
-            generate_exact_targets_csv(node_path, target_path, dqr)
 
         logging.info('***Constructing Feature Matrix***')
         x_full, mapping, full_index = load_node_csv(
             path=node_path,
             index_col=0,
             encoders=self.encoding,
+            embedding_index_file=self.embedding_index_file,
+            embedding_folder=self.embedding_folder,
         )
         logging.info('***Feature Matrix Done***')
 
         if x_full is None:
             raise TypeError('X is None type. Please use an encoding.')
 
-        df_target = pd.read_csv(target_path)
-        logging.info(f'Size of target dataframe: {df_target.shape}')
+        # Handle targets and splits differently based on fixed_split_dir
+        if self.fixed_split_dir is not None:
+            logging.info(f'Using DomainRel fixed split from: {self.fixed_split_dir}')
+            split_data = load_domainrel_split(self.fixed_split_dir)
 
-        mapping_index = [mapping[domain.strip()] for domain in df_target['domain']]
-        df_target.index = mapping_index
-        logging.info(f'Size of mapped target dataframe: {df_target.shape}')
-
-        missing_idx = full_index.difference(mapping_index)
-        filler = pd.DataFrame(
-            {col: np.nan for col in df_target.columns}, index=missing_idx
-        )
-        df_target = pd.concat([df_target, filler])
-        df_target.sort_index(inplace=True)
-        logging.info(f'Size of filled target dataframe: {df_target.shape}')
-        score = torch.tensor(
-            df_target[self.target_col].astype('float32').fillna(-1).values,
-            dtype=torch.float,
-        )
-        logging.info(f'Size of score vector: {score.size()}')
-
-        labeled_mask = score != -1.0
-
-        labeled_idx = torch.nonzero(torch.tensor(labeled_mask), as_tuple=True)[0]
-        labeled_scores = score[labeled_idx].squeeze().numpy()
-
-        if labeled_scores.size == 0:
-            raise ValueError(
-                f"No labeled nodes found in target column '{self.target_col}'"
+            total_domains = sum(len(df) for df in split_data.values())
+            logging.info(f'Total labeled domains from DomainRel: {total_domains}')
+            logging.info(
+                f'Train: {len(split_data["train"])}, Valid: {len(split_data["valid"])}, Test: {len(split_data["test"])}'
             )
+
+            # Map domains to node indices, skip domains not in graph
+            train_idx_list = []
+            valid_idx_list = []
+            test_idx_list = []
+
+            # Create score tensor initialized to -1 (unlabeled)
+            score = torch.full((x_full.size(0),), -1.0, dtype=torch.float)
+
+            # Map train domains
+            for i, domain in enumerate(split_data['train']['domain']):
+                label = split_data['train']['label'].iloc[i]
+                domain_key = domain.strip() if isinstance(domain, str) else domain
+                if domain_key in mapping:
+                    idx = mapping[domain_key]
+                    train_idx_list.append(idx)
+                    score[idx] = label
+
+            # Map valid domains
+            for i, domain in enumerate(split_data['valid']['domain']):
+                label = split_data['valid']['label'].iloc[i]
+                domain_key = domain.strip() if isinstance(domain, str) else domain
+                if domain_key in mapping:
+                    idx = mapping[domain_key]
+                    valid_idx_list.append(idx)
+                    score[idx] = label
+
+            # Map test domains
+            for i, domain in enumerate(split_data['test']['domain']):
+                label = split_data['test']['label'].iloc[i]
+                domain_key = domain.strip() if isinstance(domain, str) else domain
+                if domain_key in mapping:
+                    idx = mapping[domain_key]
+                    test_idx_list.append(idx)
+                    score[idx] = label
+
+            logging.info(
+                f'Mapped - Train: {len(train_idx_list)}, Valid: {len(valid_idx_list)}, Test: {len(test_idx_list)}'
+            )
+
+            train_idx = torch.tensor(train_idx_list, dtype=torch.long)
+            valid_idx = torch.tensor(valid_idx_list, dtype=torch.long)
+            test_idx = torch.tensor(test_idx_list, dtype=torch.long)
+
+            labeled_mask = score != -1.0
+        else:
+            # Original logic: generate targets if needed and do stratified split
+            target_path = os.path.join(self.raw_dir, self.target_file)
+            if os.path.exists(target_path):
+                logging.info('Target file already exists.')
+            else:
+                logging.info('Generating target file.')
+                dqr = get_full_dict()
+                generate_exact_targets_csv(node_path, target_path, dqr)
+
+            df_target = pd.read_csv(target_path)
+            logging.info(f'Size of target dataframe: {df_target.shape}')
+
+            mapping_index = [mapping[domain.strip()] for domain in df_target['domain']]
+            df_target.index = mapping_index
+            logging.info(f'Size of mapped target dataframe: {df_target.shape}')
+
+            missing_idx = full_index.difference(mapping_index)
+            filler = pd.DataFrame(
+                {col: np.nan for col in df_target.columns}, index=missing_idx
+            )
+            df_target = pd.concat([df_target, filler])
+            df_target.sort_index(inplace=True)
+            logging.info(f'Size of filled target dataframe: {df_target.shape}')
+            score = torch.tensor(
+                df_target[self.target_col].astype('float32').fillna(-1).values,
+                dtype=torch.float,
+            )
+            logging.info(f'Size of score vector: {score.size()}')
+
+            labeled_mask = score != -1.0
+
+            labeled_idx = torch.nonzero(torch.tensor(labeled_mask), as_tuple=True)[0]
+            labeled_scores = score[labeled_idx].squeeze().numpy()
+
+            if labeled_scores.size == 0:
+                raise ValueError(
+                    f"No labeled nodes found in target column '{self.target_col}'"
+                )
+
+            quantiles = np.quantile(labeled_scores, [1 / 3, 2 / 3])
+            quartile_labels = np.digitize(labeled_scores, bins=quantiles)
+
+            train_idx, temp_idx, _, quartile_labels_temp = train_test_split(
+                labeled_idx,
+                quartile_labels,
+                train_size=0.6,
+                stratify=quartile_labels,
+                random_state=self.seed,
+            )
+
+            valid_idx, test_idx = train_test_split(
+                temp_idx,
+                train_size=0.5,
+                stratify=quartile_labels_temp,
+                random_state=self.seed,
+            )
+
+            train_idx = torch.as_tensor(train_idx)
+            valid_idx = torch.as_tensor(valid_idx)
+            test_idx = torch.as_tensor(test_idx)
+
+        logging.info(f'Train size: {train_idx.size()}')
+        logging.info(f'Valid size: {valid_idx.size()}')
+        logging.info(f'Test size: {test_idx.size()}')
 
         logging.info('***Constructing Edge Matrix***')
         edge_index, edge_attr = load_large_edge_csv(
@@ -197,31 +317,6 @@ class TemporalDataset(InMemoryDataset):
         data = Data(x=x_full, y=score, edge_index=edge_index, edge_attr=edge_attr)
 
         data.labeled_mask = labeled_mask.detach().clone().bool()
-
-        quantiles = np.quantile(labeled_scores, [1 / 3, 2 / 3])
-        quartile_labels = np.digitize(labeled_scores, bins=quantiles)
-
-        train_idx, temp_idx, _, quartile_labels_temp = train_test_split(
-            labeled_idx,
-            quartile_labels,
-            train_size=0.6,
-            stratify=quartile_labels,
-            random_state=self.seed,
-        )
-
-        valid_idx, test_idx = train_test_split(
-            temp_idx,
-            train_size=0.5,
-            stratify=quartile_labels_temp,
-            random_state=self.seed,
-        )
-
-        train_idx = torch.as_tensor(train_idx)
-        logging.info(f'Train size: {train_idx.size()}')
-        valid_idx = torch.as_tensor(valid_idx)
-        logging.info(f'Valid size: {valid_idx.size()}')
-        test_idx = torch.as_tensor(test_idx)
-        logging.info(f'Test size: {test_idx.size()}')
 
         # Set global indices for our transductive nodes:
         num_nodes = data.num_nodes

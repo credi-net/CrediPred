@@ -9,6 +9,7 @@ from tqdm import tqdm
 
 from credipred.dataset.temporal_dataset import TemporalDataset
 from credipred.encoders.encoder import Encoder
+from credipred.encoders.pre_embedding_encoder import TextEmbeddingEncoder
 from credipred.encoders.rni_encoding import RNIEncoder
 from credipred.gnn.model import Model
 from credipred.utils.args import ModelArguments, parse_args
@@ -117,6 +118,7 @@ def main() -> None:
 
     encoder_classes: Dict[str, Encoder] = {
         'RNI': RNIEncoder(64),  # TODO: Set this a paramater
+        'PRE': TextEmbeddingEncoder(64),
     }
 
     encoding_dict: Dict[str, Encoder] = {}
@@ -135,7 +137,10 @@ def main() -> None:
         index_col=meta_args.index_col,
         encoding=encoding_dict,
         seed=meta_args.global_seed,
-        processed_dir=f'{scratch}/{meta_args.processed_location}',
+        processed_dir=cast(str, meta_args.processed_location),
+        embedding_index_file=meta_args.embedding_index_file,
+        embedding_folder=meta_args.embedding_folder,
+        fixed_split_dir=meta_args.fixed_split_dir,
     )
     logging.info('In-Memory Dataset loaded.')
     weight_directory = (
