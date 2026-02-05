@@ -1402,7 +1402,7 @@ class TemporalBinaryDatasetAllGlobalSplits(InMemoryDataset):
         if os.path.exists(target_path):
             logging.info('Target file already exists.')
         else:
-            logging.info('Generating target file.')
+            logging.info('Generating binary target file.')
             label_dict = get_full_dict()
             generate_exact_binary_targets_csv(node_path, target_path, label_dict)
 
@@ -1467,6 +1467,12 @@ class TemporalBinaryDatasetAllGlobalSplits(InMemoryDataset):
                 local_split_df[self.target_col], errors='coerce'
             ).fillna(-1)
 
+            lost_domains = local_split_df[
+                pd.to_numeric(local_split_df[self.target_col], errors='coerce').isna()
+            ]
+
+            logging.info(f'Domains lost due to invalid labels: {len(lost_domains)}')
+
             valid_mask = split_scores != -1.0
             indices = [
                 mapping[d]
@@ -1481,12 +1487,12 @@ class TemporalBinaryDatasetAllGlobalSplits(InMemoryDataset):
         )
         logging.info(f'Size train: {len(train_idx_list)}')
         valid_idx_list = get_split_indices(
-            parquet_file=str(self.split_dir / 'test_domains.parquet'),
+            parquet_file=str(self.split_dir / 'val_domains.parquet'),
             target_df=df_target,
         )
         logging.info(f'Size valid: {len(valid_idx_list)}')
         test_idx_list = get_split_indices(
-            parquet_file=str(self.split_dir / 'val_domains.parquet'),
+            parquet_file=str(self.split_dir / 'test_domains.parquet'),
             target_df=df_target,
         )
         logging.info(f'Size test: {len(test_idx_list)}')
