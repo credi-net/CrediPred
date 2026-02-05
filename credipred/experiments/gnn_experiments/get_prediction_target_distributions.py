@@ -88,6 +88,7 @@ def run_get_test_predictions(
             all_preds[seed_nodes] = preds[: batch.batch_size].cpu()
 
     test_predictions = all_preds[indices]
+    logging.info(f'Target values: {test_predictions}')
 
     abs_errors = (test_predictions - test_targets).abs()
 
