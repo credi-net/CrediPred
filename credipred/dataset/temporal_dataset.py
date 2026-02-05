@@ -1425,19 +1425,27 @@ class TemporalBinaryDatasetAllGlobalSplits(InMemoryDataset):
 
         # mapping_index = [mapping[domain.strip()] for domain in df_target['domain']]
         mapping_index = []
-        for domain in df_target['domain']:
-            try:
-                mapping_index.append(mapping[domain.strip()])
-            except KeyError:
+        valid_indices = []
+        for idx, row in df_target.iterrows():
+            domain = row['domain'].strip()
+            found = False
+
+            if domain in mapping:
+                mapping_index.append(mapping[domain])
+                found = True
+            else:
+                rev_domain = reverse_domain(domain)
+                if rev_domain in mapping:
+                    mapping_index.append(mapping[rev_domain])
+                    found = True
+            if found:
+                valid_indices.append(idx)
+            else:
                 logging.info(
-                    f'{domain.strip()} is not found in the mapping. Attempting the reversed domain.'
+                    f'Critical: {domain} and its reverse not found in mapping.'
                 )
-                try:
-                    mapping_index.append(mapping[reverse_domain(domain.strip())])
-                except KeyError:
-                    logging.info(
-                        f'Critical {reverse_domain(domain.strip())} is not found in the mapping.'
-                    )
+
+        df_target = df_target.loc[valid_indices].copy()
 
         df_target.index = mapping_index
         logging.info(f'Size of mapped target dataframe: {df_target.shape}')
