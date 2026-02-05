@@ -69,6 +69,7 @@ def run_get_test_predictions(
     count = 0
     for pred in test_targets:
         if pred > 1.0 or pred < 0:
+            logging.info(f'Target values: {pred}')
             count += 1
 
     logging.info(f'Predicted values that are out of bounds: {count}')
