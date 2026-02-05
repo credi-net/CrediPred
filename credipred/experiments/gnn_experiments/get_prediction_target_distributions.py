@@ -7,7 +7,7 @@ import torch
 from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
 
-from credipred.dataset.temporal_dataset import TemporalDataset
+from credipred.dataset.temporal_dataset import TemporalDatasetGlobalSplit
 from credipred.encoders.categorical_encoder import CategoricalEncoder
 from credipred.encoders.encoder import Encoder
 from credipred.encoders.norm_encoding import NormEncoder
@@ -38,7 +38,7 @@ parser.add_argument(
 
 def run_get_test_predictions(
     model_arguments: ModelArguments,
-    dataset: TemporalDataset,
+    dataset: TemporalDatasetGlobalSplit,
     weight_directory: Path,
     target: str,
 ) -> None:
@@ -117,7 +117,7 @@ def main() -> None:
     args = parser.parse_args()
     config_file_path = root / args.config_file
     meta_args, experiment_args = parse_args(config_file_path)
-    setup_logging(meta_args.log_file_path)
+    setup_logging(str(meta_args.log_file_path) + ':_Max_Min.log')
     seed_everything(meta_args.global_seed)
 
     encoder_classes: Dict[str, Encoder] = {
@@ -133,7 +133,7 @@ def main() -> None:
         encoder_class = encoder_classes[value]
         encoding_dict[index] = encoder_class
 
-    dataset = TemporalDataset(
+    dataset = TemporalDatasetGlobalSplit(
         root=f'{root}/data/',
         node_file=cast(str, meta_args.node_file),
         edge_file=cast(str, meta_args.edge_file),
@@ -145,6 +145,8 @@ def main() -> None:
         encoding=encoding_dict,
         seed=meta_args.global_seed,
         processed_dir=cast(str, meta_args.processed_location),
+        embedding_location=cast(str, meta_args.embedding_location),
+        embedding_lookup=meta_args.embedding_lookup,
     )
     logging.info('In-Memory Dataset loaded.')
     weight_directory = (
