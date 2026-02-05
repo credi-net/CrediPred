@@ -66,6 +66,12 @@ def run_get_test_predictions(
 
     test_targets = dataset[0].y[test_idx]
     logging.info(f'Target values: {test_targets}')
+    count = 0
+    for pred in test_targets:
+        if pred > 1.0 or pred < 0:
+            count += 1
+
+    logging.info(f'Test values that are out of bounds: {count}')
     indices = torch.tensor(test_idx, dtype=torch.long)
 
     loader = NeighborLoader(
