@@ -234,7 +234,9 @@ def main():
             best_val_loss = val_loss
             patience_counter = 0
             # Save best model state
-            best_model_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
+            best_model_state = {
+                k: v.cpu().clone() for k, v in model.state_dict().items()
+            }
             best_metrics = {
                 'best_val_loss': best_val_loss,
                 'best_val_r2': val_r2,
