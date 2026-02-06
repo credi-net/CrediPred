@@ -960,7 +960,6 @@ def plot_pred_target_distributions_histogram(
     targets: Tensor,
     model_name: str,
     target: str,
-    title: str = 'True vs Predicted Distribution',
     save_filename: str = 'pred_target_distribution_histogram.pdf',
     bins: int = 50,
 ) -> None:
@@ -998,7 +997,7 @@ def plot_pred_target_distributions_histogram(
     plt.rc('font', size=15)
     plt.xticks(np.arange(0, 1.1, 0.2), ha='right')
     plt.yticks(np.arange(0, y_max + 50, 100), rotation=0, ha='right')
-    plt.xlabel(f'{target}')
+    plt.xlabel(f'{target.upper()}')
     plt.ylabel('Frequency')
     plt.legend()
     plt.tight_layout()
