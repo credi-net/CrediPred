@@ -1,0 +1,186 @@
+import argparse
+import logging
+from pathlib import Path
+from typing import Dict, List, cast
+
+import pyarrow as pa
+import pyarrow.parquet as pq
+import torch
+from torch_geometric.loader import NeighborLoader
+from tqdm import tqdm
+
+from credipred.dataset.temporal_dataset import TemporalDatasetGlobalSplit
+from credipred.encoders.categorical_encoder import CategoricalEncoder
+from credipred.encoders.encoder import Encoder
+from credipred.encoders.norm_encoding import NormEncoder
+from credipred.encoders.pre_embedding_encoder import TextEmbeddingEncoder
+from credipred.encoders.rni_encoding import RNIEncoder
+from credipred.encoders.zero_encoder import ZeroEncoder
+from credipred.gnn.model import Model
+from credipred.utils.args import ModelArguments, parse_args
+from credipred.utils.logger import setup_logging
+from credipred.utils.path import get_root_dir
+from credipred.utils.seed import seed_everything
+
+parser = argparse.ArgumentParser(
+    description='Get inferred scores for test set.',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+)
+parser.add_argument(
+    '--config-file',
+    type=str,
+    default='configs/gnn/base.yaml',
+    help='Path to yaml configuration file to use',
+)
+
+
+def run_get_test_predictions(
+    model_arguments: ModelArguments,
+    dataset: TemporalDatasetGlobalSplit,
+    weight_directory: Path,
+    target: str,
+) -> None:
+    data = dataset[0]
+    device = f'cuda:{model_arguments.device}' if torch.cuda.is_available() else 'cpu'
+    device = torch.device(device)
+    logging.info(f'Device found: {device}')
+    weight_path = weight_directory / f'{model_arguments.model}' / 'best_model.pt'
+    test_idx = dataset.get_idx_split()['test']
+    domain_to_idx_mapping = dataset.get_mapping()
+    idx_to_domain = {v: k for k, v in domain_to_idx_mapping.items()}
+    logging.info(f'Length of testing indices: {len(test_idx)}')
+    logging.info('Mapping returned.')
+    model = Model(
+        model_name=model_arguments.model,
+        normalization=model_arguments.normalization,
+        in_channels=data.num_features,
+        hidden_channels=model_arguments.hidden_channels,
+        out_channels=model_arguments.embedding_dimension,
+        num_layers=model_arguments.num_layers,
+        dropout=model_arguments.dropout,
+        binary=False,
+    ).to(device)
+    model.load_state_dict(torch.load(weight_path, map_location=device))
+    logging.info('Model Loaded.')
+    model.eval()
+
+    test_targets = dataset[0].y[test_idx]
+    mask = test_targets != -1.0
+    logging.info(f'Target values: {test_targets}')
+
+    indices = torch.tensor(test_idx, dtype=torch.long)
+
+    loader = NeighborLoader(
+        data,
+        input_nodes=indices,
+        num_neighbors=[30, 30, 30],
+        batch_size=1024,
+        shuffle=False,
+    )
+    logging.info(f'Test indices loader  created for {len(indices)} nodes.')
+
+    num_nodes = data.num_nodes
+    all_preds = torch.zeros(num_nodes, 1)
+    dom_to_score = {}
+
+    with torch.no_grad():
+        for batch in tqdm(loader, desc=f'batch'):
+            batch = batch.to(device)
+            preds = model(batch.x, batch.edge_index)
+            seed_nodes = batch.n_id[: batch.batch_size]
+            all_preds[seed_nodes] = preds[: batch.batch_size].cpu()
+
+    test_predictions = all_preds[indices]
+    for idx in indices:
+        dom_to_score[idx_to_domain.get(idx)] = all_preds[idx]
+
+    logging.info(f'Predicted values: {test_predictions}')
+    assert len(dom_to_score) == len(test_predictions)
+
+    parquet_rows: Dict[str, List] = {'domain': [], 'scores': []}
+
+    for domain, score in dom_to_score.items():
+        parquet_rows['domain'].append(domain)
+        parquet_rows['scores'].append(score)
+
+    save_file_name = 'inferred_scores.parquet'
+
+    write_domain_emb_parquet(
+        rows=parquet_rows, directory_path=weight_directory, file_name=save_file_name
+    )
+
+
+def write_domain_emb_parquet(rows: Dict, directory_path: Path, file_name: str) -> None:
+    schema = pa.schema(
+        [
+            ('domain', pa.string()),
+            (
+                'embeddings',
+                pa.list_(pa.float32()),
+            ),
+        ]
+    )
+    table = pa.Table.from_pydict(rows, schema=schema)
+    table = table.sort_by('domain')
+    pq.write_table(
+        table,
+        directory_path / file_name,
+        row_group_size=100,
+        use_dictionary=['domain'],
+    )
+    logging.info(f'Saved domain embedding to {directory_path / file_name}')
+
+
+def main() -> None:
+    root = get_root_dir()
+    args = parser.parse_args()
+    config_file_path = root / args.config_file
+    meta_args, experiment_args = parse_args(config_file_path)
+    setup_logging(str(meta_args.log_file_path) + '_get_inferred_scores.log')
+    seed_everything(meta_args.global_seed)
+
+    encoder_classes: Dict[str, Encoder] = {
+        'RNI': RNIEncoder(64),  # TODO: Set this a paramater
+        'ZERO': ZeroEncoder(64),
+        'NORM': NormEncoder(),
+        'CAT': CategoricalEncoder(),
+        'PRE': TextEmbeddingEncoder(64),
+    }
+
+    encoding_dict: Dict[str, Encoder] = {}
+    for index, value in meta_args.encoder_dict.items():
+        encoder_class = encoder_classes[value]
+        encoding_dict[index] = encoder_class
+
+    dataset = TemporalDatasetGlobalSplit(
+        root=f'{root}/data/',
+        node_file=cast(str, meta_args.node_file),
+        edge_file=cast(str, meta_args.edge_file),
+        target_file=cast(str, meta_args.target_file),
+        target_col=meta_args.target_col,
+        edge_src_col=meta_args.edge_src_col,
+        edge_dst_col=meta_args.edge_dst_col,
+        index_col=meta_args.index_col,
+        encoding=encoding_dict,
+        seed=meta_args.global_seed,
+        processed_dir=cast(str, meta_args.processed_location),
+        embedding_location=cast(str, meta_args.embedding_location),
+        embedding_lookup=meta_args.embedding_lookup,
+    )
+    logging.info('In-Memory Dataset loaded.')
+    weight_directory = (
+        root / cast(str, meta_args.weights_directory) / f'{meta_args.target_col}'
+    )
+
+    for experiment, experiment_arg in experiment_args.exp_args.items():
+        logging.info(f'\n**Running**: {experiment}')
+        run_get_test_predictions(
+            experiment_arg.model_args,
+            dataset,
+            weight_directory,
+            target=meta_args.target_col,
+        )
+
+
+if __name__ == '__main__':
+    main()
