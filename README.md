@@ -26,7 +26,7 @@ pip install uv
 # Clone the repo
 
 # Enter the repo directory
-cd CrediGraph
+cd CrediPred
 
 # Install core dependencies into an isolated environment
 uv sync
@@ -146,16 +146,3 @@ uv run tgrag/experiments/main.py --config configs/your_config.yaml
 To learn more about making a contribution to CrediGraph see our [contribution guide](./.github/CONTRIBUTION.md)
 
 ______________________________________________________________________
-
-### Citation
-
-```
-@article{kondrupsabry2025credibench,
-  title={{CrediBench: Building Web-Scale Network Datasets for Information Integrity}},
-  author={Kondrup, Emma and Sabry, Sebastian and Abdallah, Hussein and Yang, Zachary and Zhou, James and Pelrine, Kellin and Godbout, Jean-Fran{\c{c}}ois and Bronstein, Michael and Rabbany, Reihaneh and Huang, Shenyang},
-  journal={arXiv preprint arXiv:2509.23340},
-  year={2025},
-  note={New Perspectives in Graph Machine Learning Workshop @ NeurIPS 2025},
-  url={https://arxiv.org/abs/2509.23340}
-}
-```
