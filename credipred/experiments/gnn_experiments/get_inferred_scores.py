@@ -97,6 +97,8 @@ def run_get_test_predictions(
     logging.info(f'Predicted values: {test_predictions}')
     assert len(dom_to_score) == len(test_predictions)
 
+    logging.info(f'Dictionary: {dom_to_score}')
+
     parquet_rows: Dict[str, List] = {'domain': [], 'scores': []}
 
     for domain, score in dom_to_score.items():
