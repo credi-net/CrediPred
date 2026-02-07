@@ -92,7 +92,7 @@ def run_get_test_predictions(
 
     test_predictions = all_preds[indices]
     for idx in indices:
-        dom_to_score[idx_to_domain.get(idx)] = all_preds[idx]
+        dom_to_score[idx_to_domain.get(idx.item())] = all_preds[idx].item()
 
     logging.info(f'Predicted values: {test_predictions}')
     assert len(dom_to_score) == len(test_predictions)
@@ -115,8 +115,8 @@ def write_domain_emb_parquet(rows: Dict, directory_path: Path, file_name: str) -
         [
             ('domain', pa.string()),
             (
-                'embeddings',
-                pa.list_(pa.float32()),
+                'scores',
+                pa.float32(),
             ),
         ]
     )
