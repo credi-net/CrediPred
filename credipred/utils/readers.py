@@ -236,6 +236,7 @@ def load_node_csv_multi_snapshot(
     if encoders:
         xs = []
         for key, encoder in encoders.items():
+            print(f'THIS IS THE KEY: {key}')
             if key in df.columns:
                 xs.append(encoder(df[key].values))
             elif key == 'multi':
