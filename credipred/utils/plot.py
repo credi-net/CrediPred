@@ -1,7 +1,6 @@
 import logging
 import pickle
 from collections import defaultdict
-from enum import Enum
 from typing import Dict, List, Tuple
 
 import matplotlib.pyplot as plt
@@ -13,18 +12,8 @@ from pandas import DataFrame
 from scipy.ndimage import gaussian_filter
 from torch import Tensor
 
+from credipred.utils.enums import Scoring
 from credipred.utils.path import get_root_dir
-
-
-class Scoring(str, Enum):
-    mse = 'MSE'
-    r2 = 'R2'
-    mae = 'MAE'
-
-
-class Label(str, Enum):
-    pc1 = 'PC1'
-    mbfc = 'MBFC-BIAS'
 
 
 def mean_across_lists(lists: list[list[float]]) -> list[float]:
@@ -172,7 +161,7 @@ def plot_avg_loss(
     score: Scoring,
     save_filename: str = 'loss_plot.png',
 ) -> None:
-    """Plots the averaged MSE loss over trials for train, validation, and test sets with std dev bands."""
+    """Plots the averaged Score over trials for train, validation, and test sets with std dev bands."""
     num_epochs = len(loss_tuple_run[0])
 
     data = np.array(loss_tuple_run)  # shape: (num_trials, num_epochs, 3)
@@ -971,7 +960,6 @@ def plot_pred_target_distributions_histogram(
     targets: Tensor,
     model_name: str,
     target: str,
-    title: str = 'True vs Predicted Distribution',
     save_filename: str = 'pred_target_distribution_histogram.pdf',
     bins: int = 50,
 ) -> None:
@@ -1009,7 +997,7 @@ def plot_pred_target_distributions_histogram(
     plt.rc('font', size=15)
     plt.xticks(np.arange(0, 1.1, 0.2), ha='right')
     plt.yticks(np.arange(0, y_max + 50, 100), rotation=0, ha='right')
-    plt.xlabel(f'{target}')
+    plt.xlabel(f'{target.upper()}')
     plt.ylabel('Frequency')
     plt.legend()
     plt.tight_layout()

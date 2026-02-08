@@ -4,6 +4,8 @@ from typing import Any, List, Optional, Tuple
 
 import torch
 
+from credipred.utils.enums import Metric
+
 
 def setup_logging(
     log_file_path: Optional[str] = None,
@@ -57,7 +59,9 @@ class Logger(object):
     def __init__(self, runs: int):
         self.results: List[Any] = [[] for _ in range(runs)]
 
-    def add_result(self, run: int, result: Tuple[float, float, float, float]) -> None:
+    def add_result(
+        self, run: int, result: Tuple[float, float, float, float, float]
+    ) -> None:
         """Append a result tuple to a given run.
 
         Parameters:
@@ -66,10 +70,15 @@ class Logger(object):
             result : Tuple[float, float, float, float]
                 Tuple of metrics for one step/epoch.
         """
-        assert len(result) == 4
+        assert len(result) == 5
         self.results[run].append(result)
 
-    def get_statistics(self, run: int | None = None) -> str:
+    def get_statistics(
+        self,
+        run: int | None = None,
+        metric: Metric = Metric.loss,
+        higher_is_better: bool = False,
+    ) -> str:
         """Return formatted statistics for one run or all runs.
 
         Parameters:
@@ -83,12 +92,15 @@ class Logger(object):
         lines = []
         if run is not None:
             result = torch.tensor(self.results[run])
-            argmin = result[:, 1].argmin().item()
+            if higher_is_better:
+                optimal = result[:, 1].argmax().item()
+            else:
+                optimal = result[:, 1].argmin().item()
             lines.append(f'Run {run + 1:02d}:')
-            lines.append(f'Lowest Train Loss: {result[:, 0].min():.4f}')
-            lines.append(f'Lowest Valid Loss: {result[:, 1].min():.4f}')
-            lines.append(f'  Final Train Loss: {result[argmin, 0]:.4f}')
-            lines.append(f'   Final Test Loss: {result[argmin, 2]:.4f}')
+            lines.append(f'Lowest Train {metric.value}: {result[:, 0].min():.4f}')
+            lines.append(f'Lowest Valid {metric.value}: {result[:, 1].min():.4f}')
+            lines.append(f'  Final Train {metric.value}: {result[optimal, 0]:.4f}')
+            lines.append(f'   Final Test {metric.value}: {result[optimal, 2]:.4f}')
         else:
             result = torch.tensor(self.results)
 
@@ -97,9 +109,17 @@ class Logger(object):
                 train = r[:, 0].min().item()
                 valid = r[:, 1].min().item()
                 test = r[:, 2].min().item()
-                val_selection_train = r[r[:, 1].argmin(), 0].item()
-                val_selection_test = r[r[:, 1].argmin(), 2].item()
-                val_selection_baseline = r[r[:, 1].argmin(), 3].item()
+                if higher_is_better:
+                    val_selection_train = r[r[:, 1].argmax(), 0].item()
+                    val_selection_test = r[r[:, 1].argmax(), 2].item()
+                    val_selection_baseline = r[r[:, 1].argmax(), 3].item()
+                    val_selection_random = r[r[:, 1].argmax(), 4].item()
+                else:
+                    val_selection_train = r[r[:, 1].argmin(), 0].item()
+                    val_selection_test = r[r[:, 1].argmin(), 2].item()
+                    val_selection_baseline = r[r[:, 1].argmin(), 3].item()
+                    val_selection_random = r[r[:, 1].argmin(), 4].item()
+
                 final_train = r[-1, 0].item()
                 final_valid = r[-1, 1].item()
                 final_test = r[-1, 2].item()
@@ -114,6 +134,7 @@ class Logger(object):
                         val_selection_train,
                         val_selection_test,
                         val_selection_baseline,
+                        val_selection_random,
                         final_train,
                         final_valid,
                         final_test,
@@ -127,40 +148,54 @@ class Logger(object):
 
             lines.append('All runs:')
             r = best_result[:, 0]
-            lines.append(f'Lowest Train Loss: {r.mean():.4f} ± {r.std():.4f}')
+            lines.append(f'Lowest Train {metric.value}: {r.mean():.4f} ± {r.std():.4f}')
             r = best_result[:, 1]
             lines.append(
-                f'Lowest Valid Loss (used in validation selection): {r.mean():.4f} ± {r.std():.4f}'
+                f'Lowest Valid {metric.value} (used in validation selection): {r.mean():.4f} ± {r.std():.4f}'
             )
             r = best_result[:, 2]
-            lines.append(f'Lowest Test Loss: {r.mean():.4f} ± {r.std():.4f}')
+            lines.append(f'Lowest Test {metric.value}: {r.mean():.4f} ± {r.std():.4f}')
             r = best_result[:, 3]
             lines.append(
-                f'Train Loss @ Best Validation: {r.mean():.4f} ± {r.std():.4f}'
+                f'Train {metric.value} @ Best Validation: {r.mean():.4f} ± {r.std():.4f}'
             )
             r = best_result[:, 4]
-            lines.append(f'Test Loss @ Best Validation: {r.mean():.4f} ± {r.std():.4f}')
+            lines.append(
+                f'Test {metric.value} @ Best Validation: {r.mean():.4f} ± {r.std():.4f}'
+            )
 
             r = best_result[:, 5]
-            lines.append(f'Mean Loss @ Best Validation: {r.mean():.4f} ± {r.std():.4f}')
-
+            lines.append(
+                f'Mean {metric.value} @ Best Validation: {r.mean():.4f} ± {r.std():.4f}'
+            )
             r = best_result[:, 6]
-            lines.append(f'Final Train Loss: {r.mean():.4f}')
-            r = best_result[:, 7]
-            lines.append(f'Final Valid Loss: {r.mean():.4f}')
-            r = best_result[:, 8]
-            lines.append(f'Final Test Loss: {r.mean():.4f}')
+            lines.append(
+                f'Random {metric.value} @ Best Validation: {r.mean():.4f} ± {r.std():.4f}'
+            )
 
+            r = best_result[:, 7]
+            lines.append(f'Final Train {metric.value}: {r.mean():.4f}')
+            r = best_result[:, 8]
+            lines.append(f'Final Valid {metric.value}: {r.mean():.4f}')
             r = best_result[:, 9]
-            lines.append(f'Maximum Train Loss: {r.mean():.4f} ± {r.std():.4f}')
+            lines.append(f'Final Test {metric.value}: {r.mean():.4f}')
+
             r = best_result[:, 10]
-            lines.append(f'Maximum Valid Loss: {r.mean():.4f} ± {r.std():.4f}')
+            lines.append(
+                f'Maximum Train {metric.value}: {r.mean():.4f} ± {r.std():.4f}'
+            )
             r = best_result[:, 11]
-            lines.append(f'Maximum Test Loss: {r.mean():.4f} ± {r.std():.4f}')
+            lines.append(
+                f'Maximum Valid {metric.value}: {r.mean():.4f} ± {r.std():.4f}'
+            )
+            r = best_result[:, 12]
+            lines.append(f'Maximum Test {metric.value}: {r.mean():.4f} ± {r.std():.4f}')
 
         return '\n'.join(lines)
 
-    def get_avg_statistics(self) -> str:
+    def get_avg_statistics(
+        self, metric: Metric = Metric.loss, higher_is_better: bool = False
+    ) -> str:
         """Return formatted statistics averaged across runs per epoch.
 
         Returns:
@@ -179,7 +214,10 @@ class Logger(object):
         )
         train_std_curve, val_std_curve, test_std_curve = std[:, 0], std[:, 1], std[:, 2]
 
-        best_val_idx = val_mean_curve.argmin()
+        if higher_is_better:
+            best_val_idx = val_mean_curve.argmax()
+        else:
+            best_val_idx = val_mean_curve.argmin()
 
         final_train = train_mean_curve[-1].item()
         final_train_std = train_std_curve[-1].item()
@@ -188,12 +226,21 @@ class Logger(object):
         final_test = test_mean_curve[-1].item()
         final_test_std = test_std_curve[-1].item()
 
-        best_train = train_mean_curve.min().item()
-        best_train_std = train_std_curve[train_mean_curve.argmin()].item()
+        if higher_is_better:
+            best_train = train_mean_curve.max().item()
+            best_train_std = train_std_curve[train_mean_curve.argmax()].item()
+        else:
+            best_train = train_mean_curve.min().item()
+            best_train_std = train_std_curve[train_mean_curve.argmin()].item()
+
         best_val = val_mean_curve[best_val_idx].item()
         best_val_std = val_std_curve[best_val_idx].item()
-        best_test = test_mean_curve.min().item()
-        best_test_std = test_std_curve[test_mean_curve.argmin()].item()
+        if higher_is_better:
+            best_test = test_mean_curve.max().item()
+            best_test_std = test_std_curve[test_mean_curve.argmax()].item()
+        else:
+            best_test = test_mean_curve.min().item()
+            best_test_std = test_std_curve[test_mean_curve.argmin()].item()
 
         train_at_val_best = train_mean_curve[best_val_idx].item()
         train_at_val_best_std = train_std_curve[best_val_idx].item()
@@ -220,10 +267,10 @@ class Logger(object):
 
         lines.append('')
         lines.append(
-            f'Maximum Test Loss: {test_mean_curve.max().item():.4f} +/- {test_std_curve[test_mean_curve.argmax()].item():.4f}'
+            f'Maximum Test {metric.value}: {test_mean_curve.max().item():.4f} +/- {test_std_curve[test_mean_curve.argmax()].item():.4f}'
         )
         lines.append(
-            f'Minimum Test Loss: {test_mean_curve.min().item():.4f} +/- {test_std_curve[test_mean_curve.argmin()].item():.4f}'
+            f'Minimum Test {metric.value}: {test_mean_curve.min().item():.4f} +/- {test_std_curve[test_mean_curve.argmin()].item():.4f}'
         )
 
         return '\n'.join(lines)
