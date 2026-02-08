@@ -16,7 +16,7 @@ from credipred.utils.readers import get_embeddings_multi_lookup
 
 
 class MultiSnapTextEmbeddingEncoder(Encoder):
-    def __init__(self, default_dimension: int, max_cache_size: int = 25):
+    def __init__(self, default_dimension: int, max_cache_size: int = 50):
         self.default_dimension = default_dimension
         self.max_cache_size = max_cache_size
 
