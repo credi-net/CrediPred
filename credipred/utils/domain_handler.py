@@ -104,6 +104,16 @@ def reverse_domain(domain: str) -> str:
     return '.'.join(domain.split('.')[::-1])
 
 
+def is_reversed(domain: str) -> bool:
+    parts = domain.lower().split('.')
+
+    if not parts:
+        return False
+
+    ext = tldextract.extract(parts[0])
+    return ext.suffix == parts[0]
+
+
 def extract_domain(raw: str) -> str | None:
     """Extract and normalize a domain from a raw string or URL.
 

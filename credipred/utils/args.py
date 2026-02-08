@@ -53,10 +53,10 @@ class MetaArguments:
     weights_directory: Union[str, List[str]] = field(
         metadata={'help': 'The location to save and load model weights.'},
     )
-    embedding_lookup: str = field(
+    embedding_lookup: Union[str, List[str]] = field(
         default='dec2024_wetcontent_domains_index.pkl',
         metadata={
-            'help': 'A pkl file creating a lookup table for domains -> embeddings.'
+            'help': 'A pkl file or list of pkl files creating a lookup table for domains -> embeddings.'
         },
     )
     target_col: str = field(
@@ -97,6 +97,7 @@ class MetaArguments:
             'hc_val': 'NORM',
             'text': 'TEXT',
             'pre': 'PRE',
+            'multi': 'MULTI',
         },
         metadata={
             'help': 'Node encoder dictionary defines which column is encoded by which encoder. Key: column, Value: Encoder'
@@ -191,6 +192,9 @@ class ModelArguments:
         default=128, metadata={'help': 'The output dimension of the GNN.'}
     )
     dropout: float = field(default=0.1, metadata={'help': 'Dropout value.'})
+    weight_decay: float = field(
+        default=2.36e-5, metadata={'help': 'Weight decay on the optimizer.'}
+    )
     lr: float = field(default=0.001, metadata={'help': 'Learning Rate.'})
     epochs: int = field(default=500, metadata={'help': 'Number of epochs.'})
     runs: int = field(default=100, metadata={'help': 'Number of trials.'})
