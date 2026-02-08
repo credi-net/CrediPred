@@ -94,7 +94,7 @@ class SquashedBinaryDatasetAllGlobalSplits(InMemoryDataset):
     @property
     def raw_file_names(self) -> List[str]:
         """Return the list of expected raw file names."""
-        return [self.node_file, self.edge_file]
+        return self.node_files + self.edge_files
 
     @property
     def processed_dir(self) -> str:
@@ -397,7 +397,7 @@ class SquashedDatasetGlobalSplit(InMemoryDataset):
     @property
     def raw_file_names(self) -> List[str]:
         """Return the list of expected raw file names."""
-        return [self.node_file, self.edge_file]
+        return self.node_files + self.edge_files
 
     @property
     def processed_dir(self) -> str:
