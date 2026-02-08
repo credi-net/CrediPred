@@ -238,7 +238,7 @@ def load_node_csv_multi_snapshot(
         for key, encoder in encoders.items():
             if key in df.columns:
                 xs.append(encoder(df[key].values))
-            elif key == 'multi-pre':
+            elif key == 'multi':
                 xs.append(encoder(df.index, embedding_location, embedding_lookup))
             else:
                 xs.append(encoder(len(df)))
