@@ -9,6 +9,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Callable, Dict, Iterable, Iterator, List, Set, TextIO, Tuple
 
+import numpy as np
 import pandas as pd
 import torch
 from tqdm import tqdm
@@ -405,6 +406,57 @@ def load_large_edge_csv_multi_snapshot(
     edge_attr = torch.cat(attr_chunks) if attr_chunks else None
 
     edge_index = torch.unique(edge_index, dim=1)
+
+    return edge_index, edge_attr
+
+
+def load_edge_index_memory_efficient_multi_snapshot(
+    paths: List[str],
+    src_index_col: str,
+    dst_index_col: str,
+    mapping: Dict,
+    switch_source: bool = False,
+    encoders: Dict | None = None,
+    chunk_size: int = 500_000,
+) -> Tuple[torch.Tensor, torch.Tensor | None]:
+    usecols = [src_index_col, dst_index_col]
+    if encoders:
+        usecols += [c for c in encoders if c not in usecols]
+
+    seen_hashes = np.array([], dtype=np.int64)
+
+    final_src = []
+    final_dst = []
+
+    for path in tqdm(paths):
+        with pd.read_csv(path, usecols=usecols, chunksize=chunk_size) as reader:
+            for chunk in tqdm(reader, desc=f'Processing {path}'):
+                s = chunk[src_index_col].map(mapping).values.astype(np.int64)
+                d = chunk[dst_index_col].map(mapping).values.astype(np.int64)
+
+                hashes = (s << 32) | d
+
+                mask = np.isin(hashes, seen_hashes, assume_unique=False, invert=True)
+
+                if mask.any():
+                    new_hashes = hashes[mask]
+
+                    seen_hashes = np.unique(np.concatenate([seen_hashes, new_hashes]))
+
+                    final_src.append(torch.from_numpy(s[mask]))
+                    final_dst.append(torch.from_numpy(d[mask]))
+
+    src = torch.cat(final_src)
+    dst = torch.cat(final_dst)
+    logging.info('Concatenated chunks src,dst chunks.')
+    if switch_source:
+        edge_index = torch.stack([dst, src], dim=0)
+    else:
+        edge_index = torch.stack([src, dst], dim=0)
+
+    edge_attr = None
+
+    edge_index = torch.stack([src, dst], dim=0)
 
     return edge_index, edge_attr
 

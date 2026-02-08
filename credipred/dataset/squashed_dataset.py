@@ -13,6 +13,7 @@ from credipred.encoders.encoder import Encoder
 from credipred.utils.readers import (
     get_dqr_dict,
     get_full_dict,
+    load_edge_index_memory_efficient_multi_snapshot,
     load_large_edge_csv_multi_snapshot,
     load_node_csv_multi_snapshot,
 )
@@ -250,7 +251,7 @@ class SquashedBinaryDatasetAllGlobalSplits(InMemoryDataset):
         }
 
         logging.info('***Constructing Edge Matrix***')
-        edge_index, edge_attr = load_large_edge_csv_multi_snapshot(
+        edge_index, edge_attr = load_edge_index_memory_efficient_multi_snapshot(
             paths=edge_paths,
             src_index_col=self.edge_src_col,
             dst_index_col=self.edge_dst_col,
