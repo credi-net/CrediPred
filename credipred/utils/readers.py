@@ -417,13 +417,13 @@ def load_edge_index_memory_efficient_multi_snapshot(
     mapping: Dict,
     switch_source: bool = False,
     encoders: Dict | None = None,
-    chunk_size: int = 500_000,
+    chunk_size: int = 5_000_000,
 ) -> Tuple[torch.Tensor, torch.Tensor | None]:
     usecols = [src_index_col, dst_index_col]
     if encoders:
         usecols += [c for c in encoders if c not in usecols]
 
-    seen_hashes = np.array([], dtype=np.int64)
+    seen_hashes = set()
 
     final_src = []
     final_dst = []
@@ -436,15 +436,18 @@ def load_edge_index_memory_efficient_multi_snapshot(
 
                 hashes = (s << 32) | d
 
-                mask = np.isin(hashes, seen_hashes, assume_unique=False, invert=True)
+                mask = []
+                for h in hashes:
+                    if h not in seen_hashes:
+                        seen_hashes.add(h)
+                        mask.append(True)
+                    else:
+                        mask.append(False)
 
-                if mask.any():
-                    new_hashes = hashes[mask]
-
-                    seen_hashes = np.unique(np.concatenate([seen_hashes, new_hashes]))
-
-                    final_src.append(torch.from_numpy(s[mask]))
-                    final_dst.append(torch.from_numpy(d[mask]))
+                new_mask = np.array(mask)
+                if new_mask.any():
+                    final_src.append(torch.from_numpy(s[new_mask]))
+                    final_dst.append(torch.from_numpy(d[new_mask]))
 
     src = torch.cat(final_src)
     dst = torch.cat(final_dst)
