@@ -9,7 +9,7 @@ from torch_geometric.loader import NeighborLoader
 from torcheval.metrics.functional import r2_score
 from tqdm import tqdm
 
-from credipred.dataset.temporal_dataset import TemporalDataset
+from credipred.dataset.temporal_dataset import TemporalDatasetGlobalSplit
 from credipred.gnn.model import Model
 from credipred.utils.args import DataArguments, ModelArguments
 from credipred.utils.logger import Logger
@@ -149,7 +149,7 @@ def run_gnn_baseline(
     data_arguments: DataArguments,
     model_arguments: ModelArguments,
     weight_directory: Path,
-    dataset: TemporalDataset,
+    dataset: TemporalDatasetGlobalSplit,
 ) -> None:
     data = dataset[0]
     split_idx = dataset.get_idx_split()
@@ -220,6 +220,7 @@ def run_gnn_baseline(
             out_channels=model_arguments.embedding_dimension,
             num_layers=model_arguments.num_layers,
             dropout=model_arguments.dropout,
+            binary=False,
         ).to(device)
         optimizer = torch.optim.AdamW(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch_mse: List[Tuple[float, float, float, float, float]] = []
@@ -231,9 +232,12 @@ def run_gnn_baseline(
             epoch_avg_preds.append(batch_preds)
             epoch_avg_targets.append(batch_targets)
             train_loss, _, _, train_r2 = evaluate(model, train_loader, 'train_mask')
-            valid_loss, valid_mean_baseline_loss, _, valid_r2 = evaluate(
-                model, val_loader, 'valid_mask'
-            )
+            (
+                valid_loss,
+                valid_mean_baseline_loss,
+                valid_random_baseline_loss,
+                valid_r2,
+            ) = evaluate(model, val_loader, 'valid_mask')
             test_loss, test_mean_baseline_loss, test_random_baseline_loss, test_r2 = (
                 evaluate(model, test_loader, 'test_mask')
             )
@@ -248,7 +252,14 @@ def run_gnn_baseline(
             loss_tuple_epoch_mse.append(result)
             loss_tuple_epoch_r2.append(result_r2)
             logger.add_result(
-                run, (train_loss, valid_loss, test_loss, valid_mean_baseline_loss)
+                run,
+                (
+                    train_loss,
+                    valid_loss,
+                    test_loss,
+                    valid_mean_baseline_loss,
+                    valid_random_baseline_loss,
+                ),
             )
             if valid_loss < global_best_val_loss:
                 global_best_val_loss = valid_loss

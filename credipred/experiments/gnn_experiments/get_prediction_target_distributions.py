@@ -7,9 +7,13 @@ import torch
 from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
 
-from credipred.dataset.temporal_dataset import TemporalDataset
+from credipred.dataset.temporal_dataset import TemporalDatasetGlobalSplit
+from credipred.encoders.categorical_encoder import CategoricalEncoder
 from credipred.encoders.encoder import Encoder
+from credipred.encoders.norm_encoding import NormEncoder
+from credipred.encoders.pre_embedding_encoder import TextEmbeddingEncoder
 from credipred.encoders.rni_encoding import RNIEncoder
+from credipred.encoders.zero_encoder import ZeroEncoder
 from credipred.gnn.model import Model
 from credipred.utils.args import ModelArguments, parse_args
 from credipred.utils.logger import setup_logging
@@ -34,7 +38,7 @@ parser.add_argument(
 
 def run_get_test_predictions(
     model_arguments: ModelArguments,
-    dataset: TemporalDataset,
+    dataset: TemporalDatasetGlobalSplit,
     weight_directory: Path,
     target: str,
 ) -> None:
@@ -54,13 +58,22 @@ def run_get_test_predictions(
         out_channels=model_arguments.embedding_dimension,
         num_layers=model_arguments.num_layers,
         dropout=model_arguments.dropout,
+        binary=False,
     ).to(device)
     model.load_state_dict(torch.load(weight_path, map_location=device))
     logging.info('Model Loaded.')
     model.eval()
 
     test_targets = dataset[0].y[test_idx]
+    mask = test_targets != -1.0
     logging.info(f'Target values: {test_targets}')
+    count = 0
+    for pred in test_targets:
+        if pred > 1.0 or pred < 0:
+            logging.info(f'Target values: {pred}')
+            count += 1
+
+    logging.info(f'Predicted values that are out of bounds: {count}')
     indices = torch.tensor(test_idx, dtype=torch.long)
 
     loader = NeighborLoader(
@@ -83,8 +96,15 @@ def run_get_test_predictions(
             all_preds[seed_nodes] = preds[: batch.batch_size].cpu()
 
     test_predictions = all_preds[indices]
+    logging.info(f'Predicted values: {test_predictions}')
+    count = 0
+    for pred in test_predictions:
+        if pred > 1.0 or pred < 0:
+            count += 1
 
-    abs_errors = (test_predictions - test_targets).abs()
+    logging.info(f'Predicted values that are out of bounds: {count}')
+
+    abs_errors = (test_predictions[mask] - test_targets[mask]).abs()
 
     min_error = abs_errors.min().item()
     max_error = abs_errors.max().item()
@@ -108,15 +128,19 @@ def run_get_test_predictions(
 
 def main() -> None:
     root = get_root_dir()
-    scratch = get_scratch()
+    get_scratch()
     args = parser.parse_args()
     config_file_path = root / args.config_file
     meta_args, experiment_args = parse_args(config_file_path)
-    setup_logging(meta_args.log_file_path)
+    setup_logging(str(meta_args.log_file_path) + ':_Max_Min.log')
     seed_everything(meta_args.global_seed)
 
     encoder_classes: Dict[str, Encoder] = {
         'RNI': RNIEncoder(64),  # TODO: Set this a paramater
+        'ZERO': ZeroEncoder(64),
+        'NORM': NormEncoder(),
+        'CAT': CategoricalEncoder(),
+        'PRE': TextEmbeddingEncoder(64),
     }
 
     encoding_dict: Dict[str, Encoder] = {}
@@ -124,7 +148,7 @@ def main() -> None:
         encoder_class = encoder_classes[value]
         encoding_dict[index] = encoder_class
 
-    dataset = TemporalDataset(
+    dataset = TemporalDatasetGlobalSplit(
         root=f'{root}/data/',
         node_file=cast(str, meta_args.node_file),
         edge_file=cast(str, meta_args.edge_file),
@@ -135,7 +159,9 @@ def main() -> None:
         index_col=meta_args.index_col,
         encoding=encoding_dict,
         seed=meta_args.global_seed,
-        processed_dir=f'{scratch}/{meta_args.processed_location}',
+        processed_dir=cast(str, meta_args.processed_location),
+        embedding_location=cast(str, meta_args.embedding_location),
+        embedding_lookup=meta_args.embedding_lookup,
     )
     logging.info('In-Memory Dataset loaded.')
     weight_directory = (

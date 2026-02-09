@@ -1,22 +1,27 @@
 import argparse
 import logging
-import pickle
 from pathlib import Path
-from typing import Dict, cast
+from typing import Dict, List, cast
 
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 import torch
 from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
 
-from credipred.dataset.temporal_dataset import TemporalDataset
+from credipred.dataset.temporal_dataset import TemporalDatasetGlobalSplit
+from credipred.encoders.categorical_encoder import CategoricalEncoder
 from credipred.encoders.encoder import Encoder
+from credipred.encoders.norm_encoding import NormEncoder
+from credipred.encoders.pre_embedding_encoder import TextEmbeddingEncoder
 from credipred.encoders.rni_encoding import RNIEncoder
+from credipred.encoders.zero_encoder import ZeroEncoder
 from credipred.gnn.model import Model
 from credipred.utils.args import ModelArguments, parse_args
 from credipred.utils.domain_handler import reverse_domain
 from credipred.utils.logger import setup_logging
-from credipred.utils.path import get_root_dir, get_scratch
+from credipred.utils.path import get_root_dir
 from credipred.utils.seed import seed_everything
 
 parser = argparse.ArgumentParser(
@@ -33,7 +38,7 @@ parser.add_argument(
 
 def run_forward_get_embeddings(
     model_arguments: ModelArguments,
-    dataset: TemporalDataset,
+    dataset: TemporalDatasetGlobalSplit,
     weight_directory: Path,
 ) -> None:
     root = get_root_dir()
@@ -55,6 +60,7 @@ def run_forward_get_embeddings(
         out_channels=model_arguments.embedding_dimension,
         num_layers=model_arguments.num_layers,
         dropout=model_arguments.dropout,
+        binary=False,
     ).to(device)
     model.load_state_dict(torch.load(weight_path, map_location=device))
     logging.info('Model Loaded.')
@@ -95,26 +101,54 @@ def run_forward_get_embeddings(
             if idx is not None:
                 domain_embeddings[dom] = all_preds_embeddings[idx].tolist()
 
-        save_path = weight_directory / 'dqr_domain_rni_embeddings.pkl'
-        save_path.parent.mkdir(parents=True, exist_ok=True)
+        parquet_rows: Dict[str, List] = {'domain': [], 'embeddings': []}
 
-        with open(save_path, 'wb') as f:
-            pickle.dump(domain_embeddings, f)
+        for domain, emb in domain_embeddings.items():
+            parquet_rows['domain'].append(domain)
+            parquet_rows['embeddings'].append(emb)
 
-        logging.info(f'Saved domain embedding to {save_path}')
+        write_domain_emb_parquet(
+            rows=parquet_rows,
+            directory_path=weight_directory,
+            file_name='dqr_domain_gat_from_text_embeddings_updated.parquet',
+        )
+
+
+def write_domain_emb_parquet(rows: Dict, directory_path: Path, file_name: str) -> None:
+    schema = pa.schema(
+        [
+            ('domain', pa.string()),
+            (
+                'embeddings',
+                pa.list_(pa.float32()),
+            ),
+        ]
+    )
+    table = pa.Table.from_pydict(rows, schema=schema)
+    table = table.sort_by('domain')
+    pq.write_table(
+        table,
+        directory_path / file_name,
+        row_group_size=100,
+        use_dictionary=['domain'],
+    )
+    logging.info(f'Saved domain embedding to {directory_path / file_name}')
 
 
 def main() -> None:
     root = get_root_dir()
-    scratch = get_scratch()
     args = parser.parse_args()
     config_file_path = root / args.config_file
     meta_args, experiment_args = parse_args(config_file_path)
-    setup_logging(meta_args.log_file_path)
+    setup_logging(str(meta_args.log_file_path) + ':_DQR_EMBEDDINGS.log')
     seed_everything(meta_args.global_seed)
 
     encoder_classes: Dict[str, Encoder] = {
         'RNI': RNIEncoder(64),  # TODO: Set this a paramater
+        'ZERO': ZeroEncoder(64),
+        'NORM': NormEncoder(),
+        'CAT': CategoricalEncoder(),
+        'PRE': TextEmbeddingEncoder(64),
     }
 
     encoding_dict: Dict[str, Encoder] = {}
@@ -122,7 +156,7 @@ def main() -> None:
         encoder_class = encoder_classes[value]
         encoding_dict[index] = encoder_class
 
-    dataset = TemporalDataset(
+    dataset = TemporalDatasetGlobalSplit(
         root=f'{root}/data/',
         node_file=cast(str, meta_args.node_file),
         edge_file=cast(str, meta_args.edge_file),
@@ -133,7 +167,10 @@ def main() -> None:
         index_col=meta_args.index_col,
         encoding=encoding_dict,
         seed=meta_args.global_seed,
-        processed_dir=f'{scratch}/{meta_args.processed_location}',
+        processed_dir=cast(str, meta_args.processed_location),
+        split_dir=cast(str, meta_args.split_folder),
+        embedding_location=cast(str, meta_args.embedding_location),
+        embedding_lookup=meta_args.embedding_lookup,
     )
     logging.info('In-Memory Dataset loaded.')
     weight_directory = (
