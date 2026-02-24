@@ -90,10 +90,10 @@ class Logger(object):
             lines.append(f'  Final Train Loss: {result[argmin, 0]:.4f}')
             lines.append(f'   Final Test Loss: {result[argmin, 2]:.4f}')
         else:
-            result = torch.tensor(self.results)
-
+            # Handle variable-length runs (due to early stopping)
             best_results = []
-            for r in result:
+            for run_results in self.results:
+                r = torch.tensor(run_results)
                 train = r[:, 0].min().item()
                 valid = r[:, 1].min().item()
                 test = r[:, 2].min().item()
@@ -168,7 +168,11 @@ class Logger(object):
                 Multi-line formatted summary string.
         """
         lines = []
-        results_tensor = torch.tensor(self.results)  # shape: (runs, epochs, 3)
+        # Handle variable-length runs (due to early stopping)
+        # Truncate to minimum length across all runs
+        min_epochs = min(len(run) for run in self.results)
+        truncated_results = [run[:min_epochs] for run in self.results]
+        results_tensor = torch.tensor(truncated_results)  # shape: (runs, epochs, 4)
         avg = results_tensor.mean(dim=0)  # shape: (epochs, 3)
         std = results_tensor.std(dim=0)  # shape: (epochs, 3)
 

@@ -1,0 +1,24 @@
+#!/bin/bash
+#SBATCH --job-name=sweep_domainrel
+#SBATCH --output=slurm_logs/gnn/sweep-domainrel-%j.out
+#SBATCH --error=slurm_logs/gnn/sweep-domainrel-%j.err
+#SBATCH --time=24:00:00
+#SBATCH --qos=long
+#SBATCH --gres=gpu:1
+#SBATCH --exclude=klein
+#SBATCH --mem=64G
+#SBATCH --cpus-per-task=8
+#SBATCH --partition=h100
+
+cd /slurm-storage/jiaxio/ws/CrediPred
+
+echo "Starting Wandb Sweep for DomainRel on $(hostname) at $(date)"
+
+# Create sweep and get sweep ID (run this once manually first)
+# wandb sweep configs/sweep/domainrel_gat_sweep.yaml
+
+# Run sweep agent with your sweep ID
+# Replace YOUR_SWEEP_ID with the actual sweep ID from wandb
+uv run wandb agent YOUR_ENTITY/YOUR_PROJECT/YOUR_SWEEP_ID --count 50
+
+echo "Completed on $(hostname) at $(date)"

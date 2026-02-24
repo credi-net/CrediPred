@@ -221,7 +221,11 @@ def run_gnn_baseline(
             num_layers=model_arguments.num_layers,
             dropout=model_arguments.dropout,
         ).to(device)
-        optimizer = torch.optim.AdamW(model.parameters(), lr=model_arguments.lr)
+        optimizer = torch.optim.AdamW(
+            model.parameters(),
+            lr=model_arguments.lr,
+            weight_decay=model_arguments.weight_decay,
+        )
         loss_tuple_epoch_mse: List[Tuple[float, float, float, float, float]] = []
         loss_tuple_epoch_r2: List[Tuple[float, float, float]] = []
         epoch_avg_preds: List[List[float]] = []

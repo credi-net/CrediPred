@@ -89,6 +89,27 @@ class MetaArguments:
             'help': 'Node encoder dictionary defines which column is encoded by which encoder. Key: column, Value: Encoder'
         },
     )
+    embedding_index_file: Optional[str] = field(
+        default=None,
+        metadata={
+            'help': 'Path to the domain-to-embedding-file index pickle for PRE encoder.'
+        },
+    )
+    embedding_folder: Optional[str] = field(
+        default=None,
+        metadata={
+            'help': 'Path to the folder containing embedding pickle files for PRE encoder.'
+        },
+    )
+    fixed_split_dir: Optional[str] = field(
+        default=None,
+        metadata={
+            'help': 'Path to directory containing DomainRel fixed split parquet files '
+            '(train_regression_domains.parquet, val_regression_domains.parquet, '
+            'test_regression_domains.parquet). If provided, uses this split instead of '
+            'random stratified splitting.'
+        },
+    )
     global_seed: int = field(
         default=1337,
         metadata={'help': 'Random seed to use for reproducibiility.'},
@@ -117,6 +138,14 @@ class MetaArguments:
         self.target_file = resolve_paths(self.target_file)
         self.database_folder = resolve_paths(self.database_folder)
         self.processed_location = resolve_paths(self.processed_location)
+
+        # Resolve embedding paths if provided
+        if self.embedding_index_file is not None:
+            self.embedding_index_file = resolve_paths(self.embedding_index_file)
+        if self.embedding_folder is not None:
+            self.embedding_folder = resolve_paths(self.embedding_folder)
+        if self.fixed_split_dir is not None:
+            self.fixed_split_dir = resolve_paths(self.fixed_split_dir)
 
         if self.log_file_path is not None:
             self.log_file_path = str(get_root_dir() / self.log_file_path)
@@ -177,7 +206,18 @@ class ModelArguments:
     )
     dropout: float = field(default=0.1, metadata={'help': 'Dropout value.'})
     lr: float = field(default=0.001, metadata={'help': 'Learning Rate.'})
+    weight_decay: float = field(
+        default=0.0,
+        metadata={'help': 'Weight decay (L2 regularization) for optimizer.'},
+    )
     epochs: int = field(default=500, metadata={'help': 'Number of epochs.'})
+    patience: int = field(
+        default=0,
+        metadata={
+            'help': 'Early stopping patience. 0 means no early stopping. '
+            'Training stops if validation loss does not improve for this many epochs.'
+        },
+    )
     runs: int = field(default=100, metadata={'help': 'Number of trials.'})
     use_cuda: bool = field(default=True, metadata={'help': 'Whether to use cuda.'})
     device: int = field(default=0, metadata={'help': 'Device to be used.'})
