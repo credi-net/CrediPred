@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Tuple, Union
 import yaml
 from hf_argparser import HfArgumentParser
 
+from credipred.utils.enums import TrainingMethods
 from credipred.utils.path import get_root_dir, get_scratch
 
 
@@ -40,11 +41,23 @@ class MetaArguments:
     database_folder: Union[str, List[str]] = field(
         metadata={'help': 'The folder containing the relational database.'},
     )
+    split_folder: Union[str, List[str]] = field(
+        metadata={'help': 'The folder containing the splits.'},
+    )
+    embedding_location: Union[str, List[str]] = field(
+        metadata={'help': 'The folder containing the pre-trained text embeddings.'},
+    )
     processed_location: Union[str, List[str]] = field(
         metadata={'help': 'The location to save the processed feature matrix.'},
     )
     weights_directory: Union[str, List[str]] = field(
         metadata={'help': 'The location to save and load model weights.'},
+    )
+    embedding_lookup: Union[str, List[str]] = field(
+        default='dec2024_wetcontent_domains_index.pkl',
+        metadata={
+            'help': 'A pkl file or list of pkl files creating a lookup table for domains -> embeddings.'
+        },
     )
     target_col: str = field(
         default='cr_score',
@@ -84,6 +97,7 @@ class MetaArguments:
             'hc_val': 'NORM',
             'text': 'TEXT',
             'pre': 'PRE',
+            'multi': 'MULTI',
         },
         metadata={
             'help': 'Node encoder dictionary defines which column is encoded by which encoder. Key: column, Value: Encoder'
@@ -116,7 +130,9 @@ class MetaArguments:
         self.edge_file = resolve_paths(self.edge_file)
         self.target_file = resolve_paths(self.target_file)
         self.database_folder = resolve_paths(self.database_folder)
+        self.split_folder = resolve_paths(self.split_folder)
         self.processed_location = resolve_paths(self.processed_location)
+        self.embedding_location = resolve_paths(self.embedding_location)
 
         if self.log_file_path is not None:
             self.log_file_path = str(get_root_dir() / self.log_file_path)
@@ -176,14 +192,27 @@ class ModelArguments:
         default=128, metadata={'help': 'The output dimension of the GNN.'}
     )
     dropout: float = field(default=0.1, metadata={'help': 'Dropout value.'})
+    weight_decay: float = field(
+        default=2.36e-5, metadata={'help': 'Weight decay on the optimizer.'}
+    )
     lr: float = field(default=0.001, metadata={'help': 'Learning Rate.'})
     epochs: int = field(default=500, metadata={'help': 'Number of epochs.'})
     runs: int = field(default=100, metadata={'help': 'Number of trials.'})
+    training_method: TrainingMethods = field(
+        default=TrainingMethods.DEFAULT,
+        metadata={'help': 'What training method to use.'},
+    )
     use_cuda: bool = field(default=True, metadata={'help': 'Whether to use cuda.'})
     device: int = field(default=0, metadata={'help': 'Device to be used.'})
     log_steps: int = field(
         default=50, metadata={'help': 'Step mod epoch to print logger.'}
     )
+
+    def __post_init__(self) -> None:
+        if isinstance(self.training_method, str):
+            self.training_method = TrainingMethods[self.training_method.upper()]
+        else:
+            self.training_method = TrainingMethods['DEFAULT']
 
 
 @dataclass

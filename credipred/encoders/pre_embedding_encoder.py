@@ -12,19 +12,18 @@ from tqdm import tqdm
 
 from credipred.encoders.encoder import Encoder
 from credipred.utils.domain_handler import reverse_domain
+from credipred.utils.readers import get_embeddings_lookup
 
 
 class TextEmbeddingEncoder(Encoder):
-    def __init__(self, default_dimension: int, max_cache_size: int = 10):
+    def __init__(self, default_dimension: int, max_cache_size: int = 20):
         self.default_dimension = default_dimension
         self.max_cache_size = max_cache_size
 
     def __call__(
-        self,
-        domain_names: pd.Series,
-        embeddings_lookup: Dict[str, str],
-        folder_location: Path,
+        self, domain_names: pd.Series, folder_location: Path, lookup_name: str
     ) -> Tensor:
+        embeddings_lookup = get_embeddings_lookup(str(folder_location / lookup_name))
         text_embeddings_used = 0
         rni_used = 0
         n = len(domain_names)

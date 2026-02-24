@@ -3,11 +3,13 @@
 
 import csv
 import gzip
+import logging
 import pickle
 from collections import defaultdict
 from pathlib import Path
 from typing import Callable, Dict, Iterable, Iterator, List, Set, TextIO, Tuple
 
+import numpy as np
 import pandas as pd
 import torch
 from tqdm import tqdm
@@ -157,6 +159,8 @@ def _encode_columns(df: pd.DataFrame, encoders: Dict) -> torch.Tensor:
 
 def load_node_csv(
     path: str,
+    embedding_location: Path,
+    embedding_lookup: str,
     index_col: int,
     encoders: Dict | None = None,
     chunk_size: int = 500_000,
@@ -177,7 +181,6 @@ def load_node_csv(
         (torch.Tensor or None, dict, pandas.Index)
             Feature tensor (or None), mapping from node id to index, and row index.
     """
-    scratch = get_scratch()
     dfs = []
 
     with pd.read_csv(path, index_col=index_col, chunksize=chunk_size) as reader:
@@ -195,15 +198,50 @@ def load_node_csv(
             if key in df.columns:
                 xs.append(encoder(df[key].values))
             elif key == 'pre':
-                xs.append(
-                    encoder(
-                        df.index,
-                        get_embeddings_lookup(
-                            folder_name='data/dec_2024_domain/embeddings/dec2024_wetcontent_domains_index.pkl'
-                        ),
-                        scratch / 'data' / 'dec_2024_domain' / 'embeddings',
-                    )
-                )
+                xs.append(encoder(df.index, embedding_location, embedding_lookup))
+            else:
+                xs.append(encoder(len(df)))
+
+        x = xs[0] if len(xs) == 1 else torch.cat(xs, dim=-1)
+
+    return x, mapping, pd.RangeIndex(len(df))
+
+
+def load_node_csv_multi_snapshot(
+    paths: List[str],
+    embedding_location: List[Path],
+    embedding_lookup: List[str],
+    index_col: int,
+    encoders: Dict | None = None,
+    chunk_size: int = 500_000,
+    aggregate: bool = True,
+) -> Tuple[torch.Tensor | None, Dict, pd.Index]:
+    dfs = []
+
+    for path in tqdm(paths):
+        logging.info(f'Reading nodes from path: {path}')
+        with pd.read_csv(path, index_col=index_col, chunksize=chunk_size) as reader:
+            for chunk in tqdm(reader, desc=f'Reading {path}'):
+                dfs.append(chunk)
+
+    df = pd.concat(dfs, axis=0)
+
+    logging.info(f'Number of duplications: {len(df.index.duplicated())}')
+
+    if not aggregate:
+        df = df[~df.index.duplicated(keep='first')]
+
+    mapping = {idx: i for i, idx in enumerate(df.index.unique())}
+
+    x = None
+    if encoders:
+        xs = []
+        for key, encoder in encoders.items():
+            print(f'THIS IS THE KEY: {key}')
+            if key in df.columns:
+                xs.append(encoder(df[key].values))
+            elif key == 'multi':
+                xs.append(encoder(df.index, embedding_location, embedding_lookup))
             else:
                 xs.append(encoder(len(df)))
 
@@ -325,6 +363,107 @@ def load_large_edge_csv(
     return edge_index, edge_attr
 
 
+def load_large_edge_csv_multi_snapshot(
+    paths: List[str],
+    src_index_col: str,
+    dst_index_col: str,
+    mapping: Dict,
+    switch_source: bool = False,
+    encoders: Dict | None = None,
+    chunk_size: int = 500_000,
+) -> Tuple[torch.Tensor, torch.Tensor | None]:
+    usecols = [src_index_col, dst_index_col]
+    if encoders:
+        usecols += [c for c in encoders if c not in usecols]
+
+    src_chunks, dst_chunks, attr_chunks = [], [], []
+
+    for path in tqdm(paths):
+        logging.info(f'Construction edges from path: {path}')
+        with pd.read_csv(path, usecols=usecols, chunksize=chunk_size) as reader:
+            for chunk in tqdm(reader, desc='Reading edge CSV'):
+                src_chunks.append(
+                    torch.tensor(
+                        [mapping[s] for s in chunk[src_index_col]], dtype=torch.long
+                    )
+                )
+                dst_chunks.append(
+                    torch.tensor(
+                        [mapping[d] for d in chunk[dst_index_col]], dtype=torch.long
+                    )
+                )
+
+                if encoders:
+                    attr_chunks.append(_encode_columns(chunk, encoders))
+
+    src = torch.cat(src_chunks)
+    dst = torch.cat(dst_chunks)
+    if switch_source:
+        edge_index = torch.stack([dst, src], dim=0)
+    else:
+        edge_index = torch.stack([src, dst], dim=0)
+
+    edge_attr = torch.cat(attr_chunks) if attr_chunks else None
+
+    edge_index = torch.unique(edge_index, dim=1)
+
+    return edge_index, edge_attr
+
+
+def load_edge_index_memory_efficient_multi_snapshot(
+    paths: List[str],
+    src_index_col: str,
+    dst_index_col: str,
+    mapping: Dict,
+    switch_source: bool = False,
+    encoders: Dict | None = None,
+    chunk_size: int = 5_000_000,
+) -> Tuple[torch.Tensor, torch.Tensor | None]:
+    usecols = [src_index_col, dst_index_col]
+    if encoders:
+        usecols += [c for c in encoders if c not in usecols]
+
+    seen_hashes = set()
+
+    final_src = []
+    final_dst = []
+
+    for path in tqdm(paths):
+        with pd.read_csv(path, usecols=usecols, chunksize=chunk_size) as reader:
+            for chunk in tqdm(reader, desc=f'Processing {path}'):
+                s = chunk[src_index_col].map(mapping).values.astype(np.int64)
+                d = chunk[dst_index_col].map(mapping).values.astype(np.int64)
+
+                hashes = (s << 32) | d
+
+                mask = []
+                for h in hashes:
+                    if h not in seen_hashes:
+                        seen_hashes.add(h)
+                        mask.append(True)
+                    else:
+                        mask.append(False)
+
+                new_mask = np.array(mask)
+                if new_mask.any():
+                    final_src.append(torch.from_numpy(s[new_mask]))
+                    final_dst.append(torch.from_numpy(d[new_mask]))
+
+    src = torch.cat(final_src)
+    dst = torch.cat(final_dst)
+    logging.info('Concatenated chunks src,dst chunks.')
+    if switch_source:
+        edge_index = torch.stack([dst, src], dim=0)
+    else:
+        edge_index = torch.stack([src, dst], dim=0)
+
+    edge_attr = None
+
+    edge_index = torch.stack([src, dst], dim=0)
+
+    return edge_index, edge_attr
+
+
 def get_embeddings_lookup(
     folder_name: str,
 ) -> Dict[str, str]:
@@ -341,6 +480,30 @@ def get_embeddings_lookup(
         dict = pickle.load(file)
 
     return dict
+
+
+def get_embeddings_multi_lookup(
+    folder_names: List[str],
+) -> Dict[str, List[tuple]]:
+    """Load and aggregate domain embeddings lookup table.
+
+    Returns:
+        Dict[str, str]: Mapping from domain to .pkl file name.
+    """
+    root = get_scratch()
+    final_dict = defaultdict(list)
+
+    for folder_name in folder_names:
+        lookup_path = Path(root) / folder_name
+        parent_dir = lookup_path.parent
+
+        with open(lookup_path, 'rb') as file:
+            dict = pickle.load(file)
+
+        for key, value in dict.items():
+            final_dict[key].append((parent_dir, value))
+
+    return final_dict
 
 
 # For labels
@@ -389,7 +552,7 @@ def _csv_rows(path: Path) -> Iterable[dict[str, str]]:
         yield from csv.DictReader(f)
 
 
-def get_full_dict() -> Dict[str, List[float]]:
+def get_dqr_dict() -> Dict[str, List[float]]:
     """Load domain rating metrics from the DQR dataset.
 
     Parameters:
@@ -407,6 +570,32 @@ def get_full_dict() -> Dict[str, List[float]]:
         for line in f:
             parts = line.strip().split(',')
             result[parts[0]] = [float(x) for x in parts[1:]]
+
+    return result
+
+
+def get_full_dict() -> Dict[str, int]:
+    """Load domain rating metrics from the DQR dataset.
+
+    Parameters:
+        None
+
+    Returns:
+        dict[str, list[float]]
+            Mapping from domain string to a list of numeric metric values.
+    """
+    path = Path(get_root_dir()) / 'data' / 'labels.csv'
+    result: Dict[str, int] = {}
+
+    with path.open('r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            domain = row['domain']
+            label = row['reliability']
+            if label and label.strip():
+                result[domain] = int(label)
+            else:
+                continue
 
     return result
 

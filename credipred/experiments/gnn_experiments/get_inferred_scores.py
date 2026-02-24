@@ -1,8 +1,10 @@
 import argparse
 import logging
 from pathlib import Path
-from typing import Dict, cast
+from typing import Dict, List, cast
 
+import pyarrow as pa
+import pyarrow.parquet as pq
 import torch
 from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
@@ -17,15 +19,11 @@ from credipred.encoders.zero_encoder import ZeroEncoder
 from credipred.gnn.model import Model
 from credipred.utils.args import ModelArguments, parse_args
 from credipred.utils.logger import setup_logging
-from credipred.utils.path import get_root_dir, get_scratch
-from credipred.utils.plot import (
-    plot_pred_target_distributions_histogram,
-    plot_regression_scatter_tensor,
-)
+from credipred.utils.path import get_root_dir
 from credipred.utils.seed import seed_everything
 
 parser = argparse.ArgumentParser(
-    description='Get Predictions for test set.',
+    description='Get inferred scores for test set.',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
 parser.add_argument(
@@ -48,6 +46,8 @@ def run_get_test_predictions(
     logging.info(f'Device found: {device}')
     weight_path = weight_directory / f'{model_arguments.model}' / 'best_model.pt'
     test_idx = dataset.get_idx_split()['test']
+    domain_to_idx_mapping = dataset.get_mapping()
+    idx_to_domain = {v: k for k, v in domain_to_idx_mapping.items()}
     logging.info(f'Length of testing indices: {len(test_idx)}')
     logging.info('Mapping returned.')
     model = Model(
@@ -67,13 +67,7 @@ def run_get_test_predictions(
     test_targets = dataset[0].y[test_idx]
     mask = test_targets != -1.0
     logging.info(f'Target values: {test_targets}')
-    count = 0
-    for pred in test_targets:
-        if pred > 1.0 or pred < 0:
-            logging.info(f'Target values: {pred}')
-            count += 1
 
-    logging.info(f'Predicted values that are out of bounds: {count}')
     indices = torch.tensor(test_idx, dtype=torch.long)
 
     loader = NeighborLoader(
@@ -87,6 +81,7 @@ def run_get_test_predictions(
 
     num_nodes = data.num_nodes
     all_preds = torch.zeros(num_nodes, 1)
+    dom_to_score = {}
 
     with torch.no_grad():
         for batch in tqdm(loader, desc=f'batch'):
@@ -96,43 +91,54 @@ def run_get_test_predictions(
             all_preds[seed_nodes] = preds[: batch.batch_size].cpu()
 
     test_predictions = all_preds[indices]
+    for idx in indices:
+        dom_to_score[idx_to_domain.get(idx.item())] = all_preds[idx].item()
+
     logging.info(f'Predicted values: {test_predictions}')
-    count = 0
-    for pred in test_predictions:
-        if pred > 1.0 or pred < 0:
-            count += 1
+    assert len(dom_to_score) == len(test_predictions)
 
-    logging.info(f'Predicted values that are out of bounds: {count}')
+    logging.info(f'Dictionary: {dom_to_score}')
 
-    abs_errors = (test_predictions[mask] - test_targets[mask]).abs()
+    parquet_rows: Dict[str, List] = {'domain': [], 'scores': []}
 
-    min_error = abs_errors.min().item()
-    max_error = abs_errors.max().item()
+    for domain, score in dom_to_score.items():
+        parquet_rows['domain'].append(domain)
+        parquet_rows['scores'].append(score)
 
-    logging.info(f'Min Absolute Error: {min_error:.4f}')
-    logging.info(f'Max Absolute Error: {max_error:.4f}')
+    save_file_name = 'inferred_scores.parquet'
 
-    plot_pred_target_distributions_histogram(
-        preds=test_predictions,
-        targets=test_targets,
-        model_name=model_arguments.model,
-        target=target,
+    write_domain_emb_parquet(
+        rows=parquet_rows, directory_path=weight_directory, file_name=save_file_name
     )
-    plot_regression_scatter_tensor(
-        preds=test_predictions,
-        targets=test_targets,
-        model_name=model_arguments.model,
-        target=target,
+
+
+def write_domain_emb_parquet(rows: Dict, directory_path: Path, file_name: str) -> None:
+    schema = pa.schema(
+        [
+            ('domain', pa.string()),
+            (
+                'scores',
+                pa.float32(),
+            ),
+        ]
     )
+    table = pa.Table.from_pydict(rows, schema=schema)
+    table = table.sort_by('domain')
+    pq.write_table(
+        table,
+        directory_path / file_name,
+        row_group_size=100,
+        use_dictionary=['domain'],
+    )
+    logging.info(f'Saved domain embedding to {directory_path / file_name}')
 
 
 def main() -> None:
     root = get_root_dir()
-    get_scratch()
     args = parser.parse_args()
     config_file_path = root / args.config_file
     meta_args, experiment_args = parse_args(config_file_path)
-    setup_logging(str(meta_args.log_file_path) + ':_Max_Min.log')
+    setup_logging(str(meta_args.log_file_path) + '_get_inferred_scores.log')
     seed_everything(meta_args.global_seed)
 
     encoder_classes: Dict[str, Encoder] = {

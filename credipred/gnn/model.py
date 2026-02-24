@@ -9,6 +9,7 @@ from credipred.gnn.modules import (
     GATv2Module,
     GCNModule,
     GINModule,
+    LabelPredictor,
     NodePredictor,
     ResidualModuleWrapper,
     SAGEModule,
@@ -41,9 +42,11 @@ class Model(torch.nn.Module):
         out_channels: int,
         num_layers: int,
         dropout: float,
+        binary: bool,
     ):
         super().__init__()
         self.model_name = model_name
+        self.binary = binary
         normalization_cls = self.normalization_map[normalization]
         self.input_linear = nn.Linear(
             in_features=in_channels, out_features=hidden_channels
@@ -67,6 +70,7 @@ class Model(torch.nn.Module):
             in_features=hidden_channels, out_features=out_channels
         )
         self.node_predictor = NodePredictor(in_dim=out_channels, out_dim=1)
+        self.label_predictor = LabelPredictor(in_dim=out_channels, out_dim=2)
 
     def forward(self, x: Tensor, edge_index: Tensor | None = None) -> Tensor:
         x = self.input_linear(x)
@@ -81,7 +85,10 @@ class Model(torch.nn.Module):
 
         x = self.output_normalization(x)
         x = self.output_linear(x)
-        x = self.node_predictor(x)
+        if not self.binary:
+            x = self.node_predictor(x)
+        else:
+            x = self.label_predictor(x)
         return x
 
     def get_embeddings(self, x: Tensor, edge_index: Tensor | None = None) -> Tensor:
