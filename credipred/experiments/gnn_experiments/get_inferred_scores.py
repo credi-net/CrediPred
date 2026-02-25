@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 from typing import Dict, List, cast
 
+import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 import torch
@@ -18,8 +19,9 @@ from credipred.encoders.rni_encoding import RNIEncoder
 from credipred.encoders.zero_encoder import ZeroEncoder
 from credipred.gnn.model import Model
 from credipred.utils.args import ModelArguments, parse_args
+from credipred.utils.domain_handler import reverse_domain
 from credipred.utils.logger import setup_logging
-from credipred.utils.path import get_root_dir
+from credipred.utils.path import get_root_dir, get_scratch
 from credipred.utils.seed import seed_everything
 
 parser = argparse.ArgumentParser(
@@ -39,6 +41,7 @@ def run_get_test_predictions(
     dataset: TemporalDatasetGlobalSplit,
     weight_directory: Path,
     target: str,
+    split_dir: Path,
 ) -> None:
     data = dataset[0]
     device = f'cuda:{model_arguments.device}' if torch.cuda.is_available() else 'cpu'
@@ -64,11 +67,29 @@ def run_get_test_predictions(
     logging.info('Model Loaded.')
     model.eval()
 
-    test_targets = dataset[0].y[test_idx]
-    mask = test_targets != -1.0
-    logging.info(f'Target values: {test_targets}')
+    # test_targets = dataset[0].y[test_idx]
+    test_split = str(split_dir / 'test_domains.parquet')
+    df_test_split = pd.read_parquet(test_split)
+    logging.info(f'test dataframe: {df_test_split.head()}')
+    test_targets = []
+    for idx, row in df_test_split.iterrows():
+        domain = row['domain'].strip()
+        id = None
+        if domain in domain_to_idx_mapping:
+            id = domain_to_idx_mapping[domain]
+        else:
+            rev_domain = reverse_domain(domain)
+            if reverse_domain in domain_to_idx_mapping:
+                id = domain_to_idx_mapping[rev_domain]
 
-    indices = torch.tensor(test_idx, dtype=torch.long)
+        if id:
+            test_targets.append(id)
+
+    logging.info(f'Length of df_test_split: {len(df_test_split)}')
+    logging.info(f'Length of test_targets: {len(test_targets)}')
+    mask = test_targets != -1.0
+
+    indices = torch.tensor(test_targets, dtype=torch.long)
 
     loader = NeighborLoader(
         data,
@@ -96,8 +117,6 @@ def run_get_test_predictions(
 
     logging.info(f'Predicted values: {test_predictions}')
     assert len(dom_to_score) == len(test_predictions)
-
-    logging.info(f'Dictionary: {dom_to_score}')
 
     parquet_rows: Dict[str, List] = {'domain': [], 'scores': []}
 
@@ -135,6 +154,7 @@ def write_domain_emb_parquet(rows: Dict, directory_path: Path, file_name: str) -
 
 def main() -> None:
     root = get_root_dir()
+    scratch = get_scratch()
     args = parser.parse_args()
     config_file_path = root / args.config_file
     meta_args, experiment_args = parse_args(config_file_path)
@@ -167,12 +187,15 @@ def main() -> None:
         seed=meta_args.global_seed,
         processed_dir=cast(str, meta_args.processed_location),
         embedding_location=cast(str, meta_args.embedding_location),
-        embedding_lookup=meta_args.embedding_lookup,
+        embedding_lookup=cast(str, meta_args.embedding_lookup),
+        split_dir=cast(str, meta_args.split_folder),
     )
     logging.info('In-Memory Dataset loaded.')
     weight_directory = (
         root / cast(str, meta_args.weights_directory) / f'{meta_args.target_col}'
     )
+
+    split_path = scratch / 'data' / 'splits' / 'balanced'
 
     for experiment, experiment_arg in experiment_args.exp_args.items():
         logging.info(f'\n**Running**: {experiment}')
@@ -181,6 +204,7 @@ def main() -> None:
             dataset,
             weight_directory,
             target=meta_args.target_col,
+            split_dir=split_path,
         )
 
 
