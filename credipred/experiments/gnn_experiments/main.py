@@ -93,6 +93,10 @@ def main() -> None:
 
     logging.info(f'force_undirected: {meta_args.force_undirected}')
 
+    logging.info(
+        f'Flags: multi-head: {args.multi_head}, binary-classification: {args.binary_classification}'
+    )
+
     assert (
         args.multi_head and args.binary_classification
     ), 'Cannot both mult-head and binary-classification flags.'
