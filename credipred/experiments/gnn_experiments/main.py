@@ -8,6 +8,7 @@ from credipred.dataset.squashed_dataset import (
 )
 from credipred.dataset.temporal_dataset import (
     TemporalBinaryDatasetAllGlobalSplits,
+    TemporalBinaryDatasetAllMultiGlobalSplits,
     TemporalDatasetGlobalSplit,
 )
 from credipred.encoders.categorical_encoder import CategoricalEncoder
@@ -24,6 +25,9 @@ from credipred.experiments.gnn_experiments.gnn_experiment import (
 )
 from credipred.experiments.gnn_experiments.gnn_experiment_binary_labels import (
     run_binary_class_gnn_baseline,
+)
+from credipred.experiments.gnn_experiments.gnn_experiment_multi_head import (
+    run_multihead_gnn_baseline,
 )
 from credipred.utils.args import parse_args
 from credipred.utils.logger import setup_logging
@@ -44,6 +48,11 @@ parser.add_argument(
     '--binary-classification',
     action='store_true',
     help='Whether to use binary classification, otherwise regression is used in training.',
+)
+parser.add_argument(
+    '--multi-head',
+    action='store_true',
+    help='Whether to use multi-head binary/regression in training.',
 )
 parser.add_argument(
     '--squash',
@@ -84,7 +93,33 @@ def main() -> None:
 
     logging.info(f'force_undirected: {meta_args.force_undirected}')
 
+    assert (
+        args.multi_head and args.binary_classification
+    ), 'Cannot both mult-head and binary-classification flags.'
+
     if not args.squash:
+        if args.multi_head:
+            logging.info('Task in use: Multi-Head Regression and classification.')
+            logging.info(f'Using global splits: {cast(str, meta_args.split_folder)}')
+            dataset = TemporalBinaryDatasetAllMultiGlobalSplits(
+                root=f'{root}/data/',
+                node_file=cast(str, meta_args.node_file),
+                edge_file=cast(str, meta_args.edge_file),
+                target_file=cast(str, meta_args.target_file),
+                split_dir=cast(str, meta_args.split_folder),
+                target_col=['bin', 'reg'],
+                edge_src_col=meta_args.edge_src_col,
+                edge_dst_col=meta_args.edge_dst_col,
+                index_col=meta_args.index_col,
+                force_undirected=meta_args.force_undirected,
+                switch_source=meta_args.switch_source,
+                encoding=encoding_dict,
+                seed=meta_args.global_seed,
+                processed_dir=cast(str, meta_args.processed_location),
+                embedding_location=cast(str, meta_args.embedding_location),
+                embedding_lookup=cast(str, meta_args.embedding_lookup),
+            )  # Map to .to_cpu()
+
         if args.binary_classification:
             logging.info('Task in use: Classification')
             logging.info(f'Using global splits: {cast(str, meta_args.split_folder)}')
@@ -176,14 +211,24 @@ def main() -> None:
     for experiment, experiment_arg in experiment_args.exp_args.items():
         logging.info(f'\n**Running**: {experiment}')
         if not args.binary_classification:
-            run_gnn_baseline(
-                experiment_arg.data_args,
-                experiment_arg.model_args,
-                root
-                / cast(str, meta_args.weights_directory)
-                / f'{meta_args.target_col}',
-                dataset,
-            )
+            if args.multi_head:
+                run_multihead_gnn_baseline(
+                    experiment_arg.data_args,
+                    experiment_arg.model_args,
+                    root
+                    / cast(str, meta_args.weights_directory)
+                    / f'{meta_args.target_col}',
+                    dataset,
+                )
+            else:
+                run_gnn_baseline(
+                    experiment_arg.data_args,
+                    experiment_arg.model_args,
+                    root
+                    / cast(str, meta_args.weights_directory)
+                    / f'{meta_args.target_col}',
+                    dataset,
+                )
         else:
             run_binary_class_gnn_baseline(
                 experiment_arg.data_args,
