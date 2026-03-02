@@ -600,6 +600,42 @@ def get_full_dict() -> Dict[str, int]:
     return result
 
 
+def get_multihead_dict() -> Dict[str, Tuple[int | None, float | None]]:
+    """Load domain rating metrics from the DQR dataset.
+
+    Parameters:
+        None
+
+    Returns:
+        dict[str, list[float]]
+            Mapping from domain string to a list of numeric metric values.
+    """
+    path = Path(get_root_dir()) / 'data' / 'labels_all.csv'
+    result: Dict[str, Tuple[int | None, float | None]] = {}
+
+    with path.open('r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            pair_0 = None
+            pair_1 = None
+            domain = row['domain']
+            label_bin = row['bin']
+            label_reg = row['reg']
+            if label_bin and label_bin.strip():
+                pair_0 = int(label_bin)
+            else:
+                pair_0 = None
+
+            if label_reg and label_reg.strip():
+                pair_1 = float(label_reg)
+            else:
+                pair_1 = None
+
+            result[domain] = (pair_0, pair_1)
+
+    return result
+
+
 def load_domains(path: Path, domain_col: str = 'domain') -> set[str]:
     """Load and normalize domain names from a CSV file.
 

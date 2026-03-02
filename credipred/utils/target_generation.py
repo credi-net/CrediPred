@@ -314,6 +314,62 @@ def generate_exact_binary_targets_csv(
     )
 
 
+def generate_multihead_targets_csv(
+    node_file: str,
+    targets_csv_out: str,
+    labels_domains: Dict[str, Tuple[int | None, float | None]],
+) -> None:
+    """Generate a CSV of target domains whose raw domain fields strictly match rated eTLD+1 domains.
+
+    Parameters:
+        node_file : str
+            Path to the input CSV containing a 'domain' column.
+        targets_csv_out : str
+            Path where the output targets CSV will be written.
+        labels_domains : Dict[str, int]
+            Mapping from rated eTLD+1 domains to their associated feature vectors.
+    """
+    chosen: Dict[
+        str, Tuple[int | None, float | None]
+    ] = {}  # domain -> (domain, metrics)
+    total_lines = 0
+    rejected = 0
+
+    with open(node_file, 'rt', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in tqdm(reader, desc='Reading domains'):
+            total_lines += 1
+            raw_domain = row.get('domain', '').strip()
+            if not raw_domain:
+                continue
+
+            etld1 = strict_exact_etld1_match(raw_domain, labels_domains)
+            if etld1 is None:
+                rejected += 1
+                continue
+
+            metrics = labels_domains[etld1]
+            if etld1 not in chosen:
+                chosen[reverse_domain(etld1)] = metrics
+
+    with open(targets_csv_out, 'w', newline='', encoding='utf-8') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(
+            [
+                'domain',
+                'bin',
+                'reg',
+            ]
+        )
+        for domain, pair in tqdm(chosen.items(), desc='Writing target features'):
+            writer.writerow([domain, pair[0], pair[1]])
+
+    logging.info(f'[INFO] Generation done. Processed {total_lines:,} vertex rows.')
+    logging.info(
+        f'[INFO] Wrote {len(chosen):,} exact-domain targets to {targets_csv_out}, rejected {rejected:,} nodes.'
+    )
+
+
 def generate_exact_binary_targets_csv_multi_snapshots(
     node_files: List[str], targets_csv_out: str, labels_domains: Dict[str, int]
 ) -> None:
