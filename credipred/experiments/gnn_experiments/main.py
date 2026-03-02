@@ -97,7 +97,7 @@ def main() -> None:
         f'Flags: multi-head: {args.multi_head}, binary-classification: {args.binary_classification}'
     )
 
-    assert (
+    assert not (
         args.multi_head and args.binary_classification
     ), 'Cannot both mult-head and binary-classification flags.'
 
