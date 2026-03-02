@@ -1,4 +1,5 @@
-from typing import Type, Union
+from dataclasses import dataclass
+from typing import Tuple, Type, Union
 
 import torch
 from torch import Tensor, nn
@@ -16,6 +17,12 @@ from credipred.gnn.modules import (
 )
 
 NormalizationType = Union[Type[nn.Identity], Type[nn.LayerNorm], Type[nn.BatchNorm1d]]
+
+
+@dataclass
+class ModelFlags:
+    binary: bool = False
+    multi_head: bool = False
 
 
 class Model(torch.nn.Module):
@@ -42,11 +49,11 @@ class Model(torch.nn.Module):
         out_channels: int,
         num_layers: int,
         dropout: float,
-        binary: bool,
+        flags: ModelFlags,
     ):
         super().__init__()
         self.model_name = model_name
-        self.binary = binary
+        self.flags = flags
         normalization_cls = self.normalization_map[normalization]
         self.input_linear = nn.Linear(
             in_features=in_channels, out_features=hidden_channels
@@ -69,27 +76,28 @@ class Model(torch.nn.Module):
         self.output_linear = nn.Linear(
             in_features=hidden_channels, out_features=out_channels
         )
-        self.node_predictor = NodePredictor(in_dim=out_channels, out_dim=1)
-        self.label_predictor = LabelPredictor(in_dim=out_channels, out_dim=2)
-
-    def forward(self, x: Tensor, edge_index: Tensor | None = None) -> Tensor:
-        x = self.input_linear(x)
-        x = self.dropout(x)
-        x = self.act(x)
-
-        for re_module in self.re_modules:
-            if edge_index is not None:
-                x = re_module(x, edge_index)
-            else:
-                x = re_module(x)
-
-        x = self.output_normalization(x)
-        x = self.output_linear(x)
-        if not self.binary:
-            x = self.node_predictor(x)
+        if self.flags.multi_head:
+            self.node_predictor = NodePredictor(in_dim=out_channels, out_dim=1)
+            self.label_predictor = LabelPredictor(in_dim=out_channels, out_dim=2)
         else:
-            x = self.label_predictor(x)
-        return x
+            self.head = (
+                LabelPredictor(in_dim=out_channels, out_dim=2)
+                if self.flags.binary
+                else NodePredictor(in_dim=out_channels, out_dim=1)
+            )
+
+    def forward(
+        self, x: Tensor, edge_index: Tensor | None = None
+    ) -> Tensor | Tuple[Tensor, Tensor]:
+        embeddings = self.get_embeddings(x, edge_index)
+
+        if self.flags.multi_head:
+            return (
+                self.label_predictor(embeddings),
+                self.node_predictor(embeddings),
+            )  # (binary, regression)
+
+        return self.head(embeddings)
 
     def get_embeddings(self, x: Tensor, edge_index: Tensor | None = None) -> Tensor:
         x = self.input_linear(x)
