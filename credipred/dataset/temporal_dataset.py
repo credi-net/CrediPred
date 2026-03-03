@@ -1789,22 +1789,22 @@ class TemporalBinaryDatasetAllMultiGlobalSplits(InMemoryDataset):
         df_target.sort_index(inplace=True)
         logging.info(f'Size of filled target dataframe: {df_target.shape}')
 
-        target_series = pd.to_numeric(df_target[self.target_col], errors='coerce')
-        score_values = target_series.fillna(-1).astype('int32').values
+        target_df = df_target[self.target_col]
+        target_df_numeric = target_df.apply(pd.to_numeric, errors='coerce')
+        score_values = target_df_numeric.fillna(-1).values
         score = torch.tensor(
             score_values,
             dtype=torch.long,
         )
         logging.info(f'Size of score vector: {score.size()}')
 
-        mask_regression = (score != -1.0)[:, 1]
-        mask_binary = (score != -1.0)[:, 0]
+        mask_binary = (score[:, 0] != -1.0)[:, 0]
+        mask_regression = (score[:, 1] != -1.0)[:, 1]
 
         labeled_mask = torch.logical_or(mask_regression, mask_binary)
         labeled_idx = torch.nonzero(torch.tensor(labeled_mask), as_tuple=True)[0]
-        labeled_scores = score[:, 0][labeled_idx].squeeze().numpy()
 
-        if labeled_scores.size == 0:
+        if not labeled_mask.any():
             raise ValueError(
                 f"No labeled nodes found in target column '{self.target_col}'"
             )
@@ -1814,17 +1814,15 @@ class TemporalBinaryDatasetAllMultiGlobalSplits(InMemoryDataset):
 
             local_split_df = target_df[target_df['domain'].isin(df_global['domain'])]
 
-            split_scores = pd.to_numeric(
-                local_split_df[self.target_col], errors='coerce'
+            split_scores_df = local_split_df.apply(
+                pd.to_numeric, erros='coerce'
             ).fillna(-1)
 
-            lost_domains = local_split_df[
-                pd.to_numeric(local_split_df[self.target_col], errors='coerce').isna()
-            ]
+            lost_domains = split_scores_df.isna()
 
             logging.info(f'Domains lost due to invalid labels: {len(lost_domains)}')
 
-            valid_mask = split_scores != -1.0
+            valid_mask = (split_scores_df != -1.0).any(axis=1)
             indices = [
                 mapping[d]
                 for d in local_split_df.loc[valid_mask, 'domain']
