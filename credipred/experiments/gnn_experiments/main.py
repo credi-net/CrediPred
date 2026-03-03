@@ -145,7 +145,7 @@ def main() -> None:
                 embedding_location=cast(str, meta_args.embedding_location),
                 embedding_lookup=cast(str, meta_args.embedding_lookup),
             )  # Map to .to_cpu()
-        else:
+        elif not args.multi_head:
             logging.info('Task in use: Regression')
             dataset = TemporalDatasetGlobalSplit(
                 root=f'{root}/data/',
