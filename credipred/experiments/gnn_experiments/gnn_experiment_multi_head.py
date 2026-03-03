@@ -23,72 +23,68 @@ def train_(
     train_loader: NeighborLoader,
     optimizer: torch.optim.AdamW,
     training_method: TrainingMethods,
+    alpha: float = 0.5,
 ) -> Tuple[float, float]:
     model.train()
     device = next(model.parameters()).device
     total_loss = 0
     total_samples = 0
-    all_preds = []
-    all_targets = []
+    all_preds_cls = []
+    all_targets_cls = []
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
         optimizer.zero_grad()
         batch = batch.to(device)
-        preds = model(batch.x, batch.edge_index)
-        targets = batch.y
-        active_mask = batch.train_mask
-        batch_weights = None
-        if active_mask.sum() == 0:
+        preds_cls, preds_reg = model(batch.x, batch.edge_index)
+        preds_reg = preds_reg.squeeze(0)
+        targets_cls = batch.y[:0]
+        targets_reg = batch.y[:1]
+        active_mask = batch.train_mask[: batch.size]
+
+        mask_bin = targets_cls != -1
+        mask_reg = targets_reg != -1.0
+
+        if not mask_bin.any() and not mask_reg.any():
             continue
 
-        match training_method:
-            case TrainingMethods.DEFAULT:
-                continue
-            case TrainingMethods.DOWN_SAMPLE:
-                pos_idx = torch.where(active_mask & (targets == 1))[0]
-                neg_idx = torch.where(active_mask & (targets == 0))[0]
-
-                n_pos = pos_idx.numel()
-                n_neg = neg_idx.numel()
-
-                if n_pos > n_neg and n_neg > 0:
-                    perm = torch.randperm(n_pos, device=device)[:n_neg]
-                    pos_idx = pos_idx[perm]
-
-                    balanced_mask = torch.zeros_like(active_mask, dtype=torch.bool)
-                    balanced_mask[pos_idx] = True
-                    balanced_mask[neg_idx] = False
-                    active_mask = balanced_mask
-
-            case TrainingMethods.WEIGHTED_LOSS:
-                num_pos = (targets == 1).sum().float()
-                num_neg = (targets == 0).sum().float()
+        loss_cls = torch.tensor(0.0, device=device)
+        if mask_bin.any():
+            batch_weights = None
+            if training_method == TrainingMethods.WEIGHTED_LOSS:
+                num_pos = (targets_cls[mask_bin] == 1).sum().float()
+                num_neg = (targets_cls[mask_bin] == 0).sum().float()
 
                 if num_pos > 0 and num_neg > 0:
-                    # W_1 x C_1 = W_0 x C_0
-                    weight_neg = 1.0
-                    weight_pos = num_neg / num_pos
                     batch_weights = torch.tensor(
-                        [weight_neg, weight_pos], device=device
+                        [1.0, num_neg / num_pos], device=device
                     )
-                else:
-                    batch_weights = None
 
-        loss = F.nll_loss(
-            preds[active_mask], targets[active_mask], weight=batch_weights
-        )
+            loss_cls = F.cross_entropy(
+                preds_cls[mask_bin], targets_cls[mask_bin], weight=batch_weights
+            )
+
+        loss_reg = torch.tensor(0.0, device=device)
+
+        if mask_reg.any():
+            loss_reg = F.l1_loss(preds_reg[mask_reg], targets_reg[mask_reg])
+
+        loss = (alpha * loss_cls) + ((1 - alpha) * loss_reg)
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
-        total_samples += active_mask.sum().item()
-        all_preds.append(preds[active_mask].argmax(dim=-1))
-        all_targets.append(targets[active_mask])
+        total_samples += 1
 
-    avg_ce = total_loss / total_samples
+        if mask_bin.any():
+            all_preds_cls.append(preds_cls[mask_bin].argmax(dim=-1))
+            all_targets_cls.append(targets_cls[mask_bin])
+
+    avg_loss = total_loss / total_samples
     # Calculate accuracy
-    y_pred = torch.cat(all_preds)
-    y_true = torch.cat(all_targets)
-    acc = (y_pred == y_true).float().mean().item()
-    return (avg_ce, acc)
+    acc = 0.0
+    if all_preds_cls:
+        y_pred = torch.cat(all_preds_cls)
+        y_true = torch.cat(all_targets_cls)
+        acc = (y_pred == y_true).float().mean().item()
+    return (avg_loss, acc)
 
 
 @torch.no_grad()
@@ -107,25 +103,27 @@ def evaluate(
     all_targets = []
     for batch in loader:
         batch = batch.to(device)
-        preds = model(batch.x, batch.edge_index)
-        targets = batch.y
+        preds_cls, preds_reg = model(batch.x, batch.edge_index)
+        preds_cls = preds_cls.squeeze()
+        targets_cls = batch.y[:, 0]
+        targets_reg = batch.y[:, 1]
         mask = getattr(batch, mask_name)
-        n = targets.size(0)
+        n = targets_cls.size(0)
         if mask.sum() == 0:
             continue
         # MEAN: 0.546
         mean_preds = torch.full((n, 2), -100.0).to(device)
         mean_preds[:, 1] = 0.0  # High logit for class 1
-        loss = F.nll_loss(preds[mask], targets[mask])
-        mean_loss = F.nll_loss(mean_preds[mask], targets[mask])
+        loss = F.nll_loss(preds_cls[mask], targets_cls[mask])
+        mean_loss = F.nll_loss(mean_preds[mask], targets_cls[mask])
 
         total_loss += loss.item()
         total_mean_loss += mean_loss.item()
         total_samples += mask.sum().item()
 
-        all_preds.append(preds[mask].argmax(dim=-1))
+        all_preds.append(preds_cls[mask].argmax(dim=-1))
         all_mean_preds.append(mean_preds[mask].argmax(dim=-1))
-        all_targets.append(targets[mask])
+        all_targets.append(targets_cls[mask])
 
     avg_ce = total_loss / total_samples
     total_mean_loss / total_samples
