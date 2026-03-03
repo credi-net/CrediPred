@@ -76,9 +76,9 @@ def train_(
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
         optimizer.zero_grad()
         batch = batch.to(device)
-        preds = model(batch.x, batch.edge_index).squeeze()
-        targets = batch.y
-        train_mask = batch.train_mask
+        preds = model(batch.x, batch.edge_index)[: batch.batch_size].squeeze()
+        targets = batch.y[: batch.batch_size]
+        train_mask = batch.train_mask[: batch.batch_size]
         if train_mask.sum() == 0:
             continue
 
@@ -117,9 +117,9 @@ def evaluate(
     all_targets = []
     for batch in loader:
         batch = batch.to(device)
-        preds = model(batch.x, batch.edge_index).squeeze()
-        targets = batch.y
-        mask = getattr(batch, mask_name)
+        preds = model(batch.x, batch.edge_index)[: batch.batch_size].squeeze()
+        targets = batch.y[: batch.batch_size]
+        mask = getattr(batch, mask_name)[: batch.batch_size]
         if mask.sum() == 0:
             continue
         # MEAN: 0.546
@@ -222,7 +222,11 @@ def run_gnn_baseline(
             dropout=model_arguments.dropout,
             binary=False,
         ).to(device)
-        optimizer = torch.optim.AdamW(model.parameters(), lr=model_arguments.lr)
+        optimizer = torch.optim.AdamW(
+            model.parameters(),
+            lr=model_arguments.lr,
+            weight_decay=model_arguments.weight_decay,
+        )
         loss_tuple_epoch_mse: List[Tuple[float, float, float, float, float]] = []
         loss_tuple_epoch_r2: List[Tuple[float, float, float]] = []
         epoch_avg_preds: List[List[float]] = []

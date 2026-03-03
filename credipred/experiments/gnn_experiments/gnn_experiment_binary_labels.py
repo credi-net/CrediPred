@@ -4,12 +4,10 @@ from typing import List, Tuple
 
 import torch
 import torch.nn.functional as F
+from torch_geometric.data import InMemoryDataset
 from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
 
-from credipred.dataset.temporal_dataset import (
-    TemporalBinaryDatasetGlobalSplits,
-)
 from credipred.gnn.model import Model
 from credipred.utils.args import DataArguments, ModelArguments
 from credipred.utils.enums import Metric, TrainingMethods
@@ -33,9 +31,9 @@ def train_(
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
         optimizer.zero_grad()
         batch = batch.to(device)
-        preds = model(batch.x, batch.edge_index)
-        targets = batch.y
-        active_mask = batch.train_mask
+        preds = model(batch.x, batch.edge_index)[: batch.batch_size]
+        targets = batch.y[: batch.batch_size]
+        active_mask = batch.train_mask[: batch.batch_size]
         batch_weights = None
         if active_mask.sum() == 0:
             continue
@@ -107,9 +105,9 @@ def evaluate(
     all_targets = []
     for batch in loader:
         batch = batch.to(device)
-        preds = model(batch.x, batch.edge_index)
-        targets = batch.y
-        mask = getattr(batch, mask_name)
+        preds = model(batch.x, batch.edge_index)[: batch.batch_size]
+        targets = batch.y[: batch.batch_size]
+        mask = getattr(batch, mask_name)[: batch.batch_size]
         n = targets.size(0)
         if mask.sum() == 0:
             continue
@@ -146,7 +144,7 @@ def run_binary_class_gnn_baseline(
     data_arguments: DataArguments,
     model_arguments: ModelArguments,
     weight_directory: Path,
-    dataset: TemporalBinaryDatasetGlobalSplits,
+    dataset: InMemoryDataset,
 ) -> None:
     data = dataset[0]
     split_idx = dataset.get_idx_split()
