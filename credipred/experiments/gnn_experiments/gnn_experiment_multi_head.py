@@ -38,7 +38,7 @@ def train_(
         preds_reg = preds_reg.squeeze(0)
         targets_cls = batch.y[:0]
         targets_reg = batch.y[:1]
-        active_mask = batch.train_mask[: batch.size]
+        active_mask = batch.train_mask[: batch.batch_size]
 
         mask_bin = targets_cls != -1
         mask_reg = targets_reg != -1.0
