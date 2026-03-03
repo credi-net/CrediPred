@@ -91,13 +91,14 @@ class Model(torch.nn.Module):
     ) -> Tensor | Tuple[Tensor, Tensor]:
         embeddings = self.get_embeddings(x, edge_index)
 
+        x = self.output_linear(embeddings)
         if self.flags.multi_head:
             return (
-                self.label_predictor(embeddings),
-                self.node_predictor(embeddings),
+                self.label_predictor(x),
+                self.node_predictor(x),
             )  # (binary, regression)
 
-        return self.head(embeddings)
+        return self.head(x)
 
     def get_embeddings(self, x: Tensor, edge_index: Tensor | None = None) -> Tensor:
         x = self.input_linear(x)
