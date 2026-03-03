@@ -35,9 +35,9 @@ def train_(
         optimizer.zero_grad()
         batch = batch.to(device)
         preds_cls, preds_reg = model(batch.x, batch.edge_index)
-        preds_reg = preds_reg.squeeze(0)
-        targets_cls = batch.y[:0]
-        targets_reg = batch.y[:1]
+        preds_reg = preds_reg.squeeze()
+        targets_cls = batch.y[:, 0]
+        targets_reg = batch.y[:, 1]
         active_mask = batch.train_mask[: batch.batch_size]
 
         mask_bin = targets_cls != -1
