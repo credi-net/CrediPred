@@ -1815,7 +1815,7 @@ class TemporalBinaryDatasetAllMultiGlobalSplits(InMemoryDataset):
             local_split_df = target_df[target_df['domain'].isin(df_global['domain'])]
 
             split_scores_df = local_split_df.apply(
-                pd.to_numeric, erros='coerce'
+                pd.to_numeric, errors='coerce'
             ).fillna(-1)
 
             lost_domains = split_scores_df.isna()
