@@ -39,18 +39,18 @@ def train(
         optimizer.zero_grad()
         batch = batch.to(device)
         preds = model(batch.x, batch.edge_index).squeeze()
-        targets = batch.y
-        train_mask = batch.train_mask
-        if train_mask.sum() == 0:
-            continue
+        # Only compute loss on seed nodes (first batch_size nodes).
+        n_seed = batch.batch_size
+        seed_preds = preds[:n_seed]
+        seed_targets = batch.y[:n_seed]
 
-        loss = F.l1_loss(preds[train_mask], targets[train_mask])
+        loss = F.l1_loss(seed_preds, seed_targets)
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
         total_batches += 1
-        all_preds.append(preds[train_mask])
-        all_targets.append(targets[train_mask])
+        all_preds.append(seed_preds)
+        all_targets.append(seed_targets)
 
     r2 = r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
     avg_preds = ragged_mean_by_index(all_preds)
@@ -77,21 +77,21 @@ def train_(
         optimizer.zero_grad()
         batch = batch.to(device)
         preds = model(batch.x, batch.edge_index).squeeze()
-        targets = batch.y
-        train_mask = batch.train_mask
-        if train_mask.sum() == 0:
-            continue
+        # Only compute loss on seed nodes (first batch_size nodes).
+        n_seed = batch.batch_size
+        seed_preds = preds[:n_seed]
+        seed_targets = batch.y[:n_seed]
 
-        loss = F.l1_loss(preds[train_mask], targets[train_mask])
+        loss = F.l1_loss(seed_preds, seed_targets)
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
         total_batches += 1
-        all_preds.append(preds[train_mask])
-        all_targets.append(targets[train_mask])
-        for pred in preds[train_mask]:
+        all_preds.append(seed_preds)
+        all_targets.append(seed_targets)
+        for pred in seed_preds:
             pred_scores.append(pred.item())
-        for targ in targets[train_mask]:
+        for targ in seed_targets:
             target_scores.append(targ.item())
 
     r2 = r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
@@ -119,24 +119,28 @@ def evaluate(
         batch = batch.to(device)
         preds = model(batch.x, batch.edge_index).squeeze()
         targets = batch.y
-        mask = getattr(batch, mask_name)
+        # Only evaluate seed nodes (first batch_size nodes) to avoid
+        # double-counting nodes that appear as neighbors in other batches.
+        n_seed = batch.batch_size
+        mask = getattr(batch, mask_name)[:n_seed]
         if mask.sum() == 0:
             continue
+        seed_preds = preds[:n_seed]
+        seed_targets = targets[:n_seed]
         # MEAN: 0.546
-        mean_preds = torch.full(batch.y[mask].size(), 0.5).to(device)
-        random_preds = torch.rand(batch.y[mask].size(0)).to(device)
-        loss = F.l1_loss(preds[mask], targets[mask])
-        mean_loss = F.l1_loss(mean_preds, targets[mask])
-        random_loss = F.l1_loss(random_preds, targets[mask])
+        mean_preds = torch.full(seed_targets[mask].size(), 0.5).to(device)
+        random_preds = torch.rand(seed_targets[mask].size(0)).to(device)
+        loss = F.l1_loss(seed_preds[mask], seed_targets[mask])
+        mean_loss = F.l1_loss(mean_preds, seed_targets[mask])
+        random_loss = F.l1_loss(random_preds, seed_targets[mask])
 
-        # TODO: Change this to report the loss of mean to be accurate. Use full score for don't average per batch.
         total_loss += loss.item()
         total_mean_loss += mean_loss.item()
         total_random_loss += random_loss.item()
         total_batches += 1
 
-        all_preds.append(preds[mask])
-        all_targets.append(targets[mask])
+        all_preds.append(seed_preds[mask])
+        all_targets.append(seed_targets[mask])
 
     r2 = r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
     mse = total_loss / total_batches

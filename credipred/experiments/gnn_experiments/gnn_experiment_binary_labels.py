@@ -34,37 +34,40 @@ def train_(
         optimizer.zero_grad()
         batch = batch.to(device)
         preds = model(batch.x, batch.edge_index)
-        targets = batch.y
-        active_mask = batch.train_mask
+        # Only compute loss on seed nodes (first batch_size nodes).
+        n_seed = batch.batch_size
+        seed_preds = preds[:n_seed]
+        seed_targets = batch.y[:n_seed]
         batch_weights = None
-        if active_mask.sum() == 0:
-            continue
 
         match training_method:
             case TrainingMethods.DEFAULT:
                 continue
             case TrainingMethods.DOWN_SAMPLE:
-                pos_idx = torch.where(active_mask & (targets == 1))[0]
-                neg_idx = torch.where(active_mask & (targets == 0))[0]
+                pos_idx = torch.where(seed_targets == 1)[0]
+                neg_idx = torch.where(seed_targets == 0)[0]
 
                 n_pos = pos_idx.numel()
                 n_neg = neg_idx.numel()
+                if n_pos == 0 or n_neg == 0:
+                    continue
 
-                if n_pos > n_neg and n_neg > 0:
+                if n_pos > n_neg:
                     perm = torch.randperm(n_pos, device=device)[:n_neg]
                     pos_idx = pos_idx[perm]
 
-                    balanced_mask = torch.zeros_like(active_mask, dtype=torch.bool)
-                    balanced_mask[pos_idx] = True
-                    balanced_mask[neg_idx] = False
-                    active_mask = balanced_mask
+                active_mask = torch.zeros(n_seed, dtype=torch.bool, device=device)
+                active_mask[pos_idx] = True
+                active_mask[neg_idx] = True
+
+                seed_preds = seed_preds[active_mask]
+                seed_targets = seed_targets[active_mask]
 
             case TrainingMethods.WEIGHTED_LOSS:
-                num_pos = (targets == 1).sum().float()
-                num_neg = (targets == 0).sum().float()
+                num_pos = (seed_targets == 1).sum().float()
+                num_neg = (seed_targets == 0).sum().float()
 
                 if num_pos > 0 and num_neg > 0:
-                    # W_1 x C_1 = W_0 x C_0
                     weight_neg = 1.0
                     weight_pos = num_neg / num_pos
                     batch_weights = torch.tensor(
@@ -73,15 +76,13 @@ def train_(
                 else:
                     batch_weights = None
 
-        loss = F.nll_loss(
-            preds[active_mask], targets[active_mask], weight=batch_weights
-        )
+        loss = F.nll_loss(seed_preds, seed_targets, weight=batch_weights)
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
-        total_samples += active_mask.sum().item()
-        all_preds.append(preds[active_mask].argmax(dim=-1))
-        all_targets.append(targets[active_mask])
+        total_samples += seed_targets.size(0)
+        all_preds.append(seed_preds.argmax(dim=-1))
+        all_targets.append(seed_targets)
 
     avg_ce = total_loss / total_samples
     # Calculate accuracy
@@ -109,23 +110,27 @@ def evaluate(
         batch = batch.to(device)
         preds = model(batch.x, batch.edge_index)
         targets = batch.y
-        mask = getattr(batch, mask_name)
-        n = targets.size(0)
+        # Only evaluate seed nodes (first batch_size nodes) to avoid
+        # double-counting nodes that appear as neighbors in other batches.
+        n_seed = batch.batch_size
+        mask = getattr(batch, mask_name)[:n_seed]
         if mask.sum() == 0:
             continue
+        seed_preds = preds[:n_seed]
+        seed_targets = targets[:n_seed]
         # MEAN: 0.546
-        mean_preds = torch.full((n, 2), -100.0).to(device)
+        mean_preds = torch.full((n_seed, 2), -100.0).to(device)
         mean_preds[:, 1] = 0.0  # High logit for class 1
-        loss = F.nll_loss(preds[mask], targets[mask])
-        mean_loss = F.nll_loss(mean_preds[mask], targets[mask])
+        loss = F.nll_loss(seed_preds[mask], seed_targets[mask])
+        mean_loss = F.nll_loss(mean_preds[mask], seed_targets[mask])
 
         total_loss += loss.item()
         total_mean_loss += mean_loss.item()
         total_samples += mask.sum().item()
 
-        all_preds.append(preds[mask].argmax(dim=-1))
+        all_preds.append(seed_preds[mask].argmax(dim=-1))
         all_mean_preds.append(mean_preds[mask].argmax(dim=-1))
-        all_targets.append(targets[mask])
+        all_targets.append(seed_targets[mask])
 
     avg_ce = total_loss / total_samples
     total_mean_loss / total_samples
