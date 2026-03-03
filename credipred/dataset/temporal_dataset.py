@@ -1798,8 +1798,8 @@ class TemporalBinaryDatasetAllMultiGlobalSplits(InMemoryDataset):
         )
         logging.info(f'Size of score vector: {score.size()}')
 
-        mask_binary = (score[:, 0] != -1.0)[:, 0]
-        mask_regression = (score[:, 1] != -1.0)[:, 1]
+        mask_binary = score[:, 0] != -1.0
+        mask_regression = score[:, 1] != -1.0
 
         labeled_mask = torch.logical_or(mask_regression, mask_binary)
         labeled_idx = torch.nonzero(torch.tensor(labeled_mask), as_tuple=True)[0]
