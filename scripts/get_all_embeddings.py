@@ -12,6 +12,7 @@ from credipred.dataset.temporal_dataset import (
     TemporalBinaryDatasetAllGlobalSplits,
 )
 from credipred.encoders.encoder import Encoder
+from credipred.encoders.pre_embedding_encoder import TextEmbeddingEncoder
 from credipred.encoders.rni_encoding import RNIEncoder
 from credipred.gnn.model import Model
 from credipred.utils.args import ModelArguments, parse_args
@@ -148,6 +149,7 @@ def main() -> None:
 
     encoder_classes: Dict[str, Encoder] = {
         'RNI': RNIEncoder(64),  # TODO: Set this a paramater
+        'PRE': TextEmbeddingEncoder(64),
     }
 
     encoding_dict: Dict[str, Encoder] = {}
