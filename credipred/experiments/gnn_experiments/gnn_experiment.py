@@ -176,6 +176,8 @@ def run_gnn_baseline(
     final_avg_targets: List[List[float]] = []
     global_best_val_loss = float('inf')
     best_state_dict = None
+    patience = model_arguments.patience
+    patience_counter = 0
     logging.info('*** Training ***')
     for run in tqdm(range(model_arguments.runs), desc='Runs'):
         model = Model(
@@ -193,7 +195,7 @@ def run_gnn_baseline(
         loss_tuple_epoch_r2: List[Tuple[float, float, float]] = []
         epoch_avg_preds: List[List[float]] = []
         epoch_avg_targets: List[List[float]] = []
-        for _ in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
+        for epoch in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
             _, _, batch_preds, batch_targets = train_(model, train_loader, optimizer)
             epoch_avg_preds.append(batch_preds)
             epoch_avg_targets.append(batch_targets)
@@ -230,6 +232,13 @@ def run_gnn_baseline(
             if valid_loss < global_best_val_loss:
                 global_best_val_loss = valid_loss
                 best_state_dict = model.state_dict()
+                patience_counter = 0
+            else:
+                patience_counter += 1
+                if patience_counter >= patience:
+                    logging.info(f'Early stopping at epoch {epoch}')
+                    logging.info(f'Best validation loss: {global_best_val_loss}')
+                    break
 
         final_avg_preds.append(mean_across_lists(epoch_avg_preds))
         final_avg_targets.append(mean_across_lists(epoch_avg_targets))

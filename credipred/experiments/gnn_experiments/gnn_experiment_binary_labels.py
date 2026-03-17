@@ -7,9 +7,7 @@ import torch.nn.functional as F
 from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
 
-from credipred.dataset.temporal_dataset import (
-    TemporalBinaryDatasetGlobalSplits,
-)
+from credipred.dataset.dataset import WebGraphDataset
 from credipred.gnn.model import Model
 from credipred.utils.args import DataArguments, ModelArguments
 from credipred.utils.enums import Metric, TrainingMethods
@@ -151,7 +149,7 @@ def run_binary_class_gnn_baseline(
     data_arguments: DataArguments,
     model_arguments: ModelArguments,
     weight_directory: Path,
-    dataset: TemporalBinaryDatasetGlobalSplits,
+    dataset: WebGraphDataset,
 ) -> None:
     data = dataset[0]
     split_idx = dataset.get_idx_split()
@@ -209,6 +207,8 @@ def run_binary_class_gnn_baseline(
     loss_tuple_run_mse: List[List[Tuple[float, float, float, float, float]]] = []
     global_best_val_loss = float('inf')
     best_state_dict = None
+    patience = model_arguments.patience
+    patience_counter = 0
     logging.info('*** Training ***')
     for run in tqdm(range(model_arguments.runs), desc='Runs'):
         model = Model(
@@ -223,7 +223,7 @@ def run_binary_class_gnn_baseline(
         ).to(device)
         optimizer = torch.optim.AdamW(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch_mse: List[Tuple[float, float, float, float, float]] = []
-        for _ in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
+        for epoch in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
             loss_ce, _ = train_(
                 model, train_loader, optimizer, model_arguments.training_method
             )
@@ -258,6 +258,13 @@ def run_binary_class_gnn_baseline(
             if valid_ce_loss < global_best_val_loss:
                 global_best_val_loss = valid_ce_loss
                 best_state_dict = model.state_dict()
+                patience_counter = 0
+            else:
+                patience_counter += 1
+                if patience_counter >= patience:
+                    logging.info(f'Early stopping at epoch {epoch}')
+                    logging.info(f'Best validation loss {global_best_val_loss}')
+                    break
 
         loss_tuple_run_mse.append(loss_tuple_epoch_mse)
 
