@@ -17,6 +17,7 @@ from credipred.utils.readers import (
     load_large_edge_csv,
     load_node_csv,
 )
+from credipred.utils.registry import DATASETS
 from credipred.utils.target_generation import (
     generate_exact_binary_targets_csv,
     generate_exact_targets_csv,
@@ -245,6 +246,7 @@ class WebGraphDataset(InMemoryDataset, ABC):
         pass
 
 
+@DATASETS.register('Regression')
 class WebGraphDatasetRegression(WebGraphDataset):
     """Graph dataset with Regression labels."""
 
@@ -392,6 +394,7 @@ class WebGraphDatasetRegression(WebGraphDataset):
         logging.info(f'\n{df_summary.to_string(index=False)}')
 
 
+@DATASETS.register('BinaryDownsample')
 class WebGraphDatasetBinaryDownsample(WebGraphDataset):
     """Graph dataset with binary labels. Downsampling full labelled set."""
 
@@ -586,6 +589,7 @@ class WebGraphDatasetBinaryDownsample(WebGraphDataset):
             )
 
 
+@DATASETS.register('BinaryGlobal')
 class WebGraphDatasetBinaryGlobalSplits(WebGraphDataset):
     """Graph dataset with Binary labels. All splits taken from pre-defined set."""
 

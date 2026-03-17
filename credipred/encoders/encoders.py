@@ -16,8 +16,10 @@ from credipred.utils.readers import (
     get_embeddings_lookup,
     get_embeddings_multi_lookup,
 )
+from credipred.utils.registry import ENCODERS
 
 
+@ENCODERS.register('NORM')
 class NormEncoder(Encoder):
     def __call__(self, input: np.ndarray) -> Tensor:
         input = input.astype(np.float32)
@@ -31,6 +33,7 @@ class NormEncoder(Encoder):
         return torch.tensor(normalized, dtype=torch.float32)
 
 
+@ENCODERS.register('ZERO')
 class ZeroEncoder(Encoder):
     def __init__(self, dimension: int):
         self.dimension = dimension
@@ -39,6 +42,7 @@ class ZeroEncoder(Encoder):
         return torch.zeros(length, self.dimension)
 
 
+@ENCODERS.register('CAT')
 class CategoricalEncoder(Encoder):
     def __call__(self, input: np.ndarray) -> Tensor:
         input = input.astype(np.int64)
@@ -54,6 +58,7 @@ class CategoricalEncoder(Encoder):
         return torch.from_numpy(one_hot)
 
 
+@ENCODERS.register('RNI')
 class RNIEncoder(Encoder):
     def __init__(self, dimension: int):
         self.dimension = dimension
@@ -62,6 +67,7 @@ class RNIEncoder(Encoder):
         return torch.rand(length, self.dimension)
 
 
+@ENCODERS.register('PRE')
 class TextEmbeddingEncoder(Encoder):
     def __init__(self, default_dimension: int, max_cache_size: int = 20):
         self.default_dimension = default_dimension
@@ -109,6 +115,7 @@ class TextEmbeddingEncoder(Encoder):
         return out  # [num_domains, embedding_dim]
 
 
+@ENCODERS.register('MULTI')
 class MultiSnapTextEmbeddingEncoder(Encoder):
     def __init__(self, default_dimension: int, max_cache_size: int = 50):
         self.default_dimension = default_dimension
