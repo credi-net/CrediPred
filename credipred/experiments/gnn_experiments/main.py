@@ -10,15 +10,15 @@ from credipred.dataset.temporal_dataset import (
     TemporalBinaryDatasetAllGlobalSplits,
     TemporalDatasetGlobalSplit,
 )
-from credipred.encoders.categorical_encoder import CategoricalEncoder
 from credipred.encoders.encoder import Encoder
-from credipred.encoders.multi_snapshot_text_encoder import (
+from credipred.encoders.encoders import (
+    CategoricalEncoder,
     MultiSnapTextEmbeddingEncoder,
+    NormEncoder,
+    RNIEncoder,
+    TextEmbeddingEncoder,
+    ZeroEncoder,
 )
-from credipred.encoders.norm_encoding import NormEncoder
-from credipred.encoders.pre_embedding_encoder import TextEmbeddingEncoder
-from credipred.encoders.rni_encoding import RNIEncoder
-from credipred.encoders.zero_encoder import ZeroEncoder
 from credipred.experiments.gnn_experiments.gnn_experiment import (
     run_gnn_baseline,
 )
