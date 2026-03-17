@@ -78,6 +78,10 @@ class MetaArguments:
         default=False,
         metadata={'help': 'Reverse src,dst order.'},
     )
+    is_regression: bool = field(
+        default=False,
+        metadata={'help': 'Is the task a regression or classification problem'},
+    )
     index_col: int = field(
         default=1,
         metadata={
@@ -151,10 +155,6 @@ class DataArguments:
     num_test_shards: int = field(
         metadata={'help': 'Number of test splits to do for uncertainty estimates.'},
         default=1,
-    )
-    is_regression: bool = field(
-        default=False,
-        metadata={'help': 'Is the task a regression or classification problem'},
     )
 
 
