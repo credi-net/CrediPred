@@ -4,7 +4,6 @@ from typing import List, Tuple
 
 import torch
 import torch.nn.functional as F
-from torch import Tensor
 from torch_geometric.loader import NeighborLoader
 from torcheval.metrics.functional import r2_score
 from tqdm import tqdm
@@ -18,45 +17,9 @@ from credipred.utils.plot import (
     mean_across_lists,
     plot_avg_loss,
     plot_avg_loss_r2,
-    plot_pred_target_distributions_bin_list,
 )
 from credipred.utils.prob import ragged_mean_by_index
 from credipred.utils.save import save_loss_results
-
-
-def train(
-    model: torch.nn.Module,
-    train_loader: NeighborLoader,
-    optimizer: torch.optim.AdamW,
-) -> Tuple[float, float, Tensor, Tensor]:
-    model.train()
-    device = next(model.parameters()).device
-    total_loss = 0
-    total_batches = 0
-    all_preds = []
-    all_targets = []
-    for batch in tqdm(train_loader, desc='Batchs', leave=False):
-        optimizer.zero_grad()
-        batch = batch.to(device)
-        preds = model(batch.x, batch.edge_index).squeeze()
-        # Only compute loss on seed nodes (first batch_size nodes).
-        n_seed = batch.batch_size
-        seed_preds = preds[:n_seed]
-        seed_targets = batch.y[:n_seed]
-
-        loss = F.l1_loss(seed_preds, seed_targets)
-        loss.backward()
-        optimizer.step()
-        total_loss += loss.item()
-        total_batches += 1
-        all_preds.append(seed_preds)
-        all_targets.append(seed_targets)
-
-    r2 = r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
-    avg_preds = ragged_mean_by_index(all_preds)
-    avg_targets = ragged_mean_by_index(all_targets)
-    mse = total_loss / total_batches
-    return (mse, r2, avg_preds, avg_targets)
 
 
 def train_(
@@ -70,7 +33,6 @@ def train_(
     total_batches = 0
     all_preds = []
     all_targets = []
-    # TODO: Score in one list
     pred_scores = []
     target_scores = []
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
@@ -214,6 +176,8 @@ def run_gnn_baseline(
     final_avg_targets: List[List[float]] = []
     global_best_val_loss = float('inf')
     best_state_dict = None
+    patience = model_arguments.patience
+    patience_counter = 0
     logging.info('*** Training ***')
     for run in tqdm(range(model_arguments.runs), desc='Runs'):
         model = Model(
@@ -231,7 +195,7 @@ def run_gnn_baseline(
         loss_tuple_epoch_r2: List[Tuple[float, float, float]] = []
         epoch_avg_preds: List[List[float]] = []
         epoch_avg_targets: List[List[float]] = []
-        for _ in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
+        for epoch in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
             _, _, batch_preds, batch_targets = train_(model, train_loader, optimizer)
             epoch_avg_preds.append(batch_preds)
             epoch_avg_targets.append(batch_targets)
@@ -268,6 +232,13 @@ def run_gnn_baseline(
             if valid_loss < global_best_val_loss:
                 global_best_val_loss = valid_loss
                 best_state_dict = model.state_dict()
+                patience_counter = 0
+            else:
+                patience_counter += 1
+                if patience_counter >= patience:
+                    logging.info(f'Early stopping at epoch {epoch}')
+                    logging.info(f'Best validation loss: {global_best_val_loss}')
+                    break
 
         final_avg_preds.append(mean_across_lists(epoch_avg_preds))
         final_avg_targets.append(mean_across_lists(epoch_avg_targets))
@@ -298,12 +269,6 @@ def run_gnn_baseline(
         )
     )
     logging.info('Constructing plots')
-    plot_pred_target_distributions_bin_list(
-        preds=final_avg_preds,
-        targets=final_avg_targets,
-        model_name=model_arguments.model,
-        bins=100,
-    )
     plot_avg_loss(
         loss_tuple_run_mse, model_arguments.model, Scoring.mae, 'loss_plot.png'
     )

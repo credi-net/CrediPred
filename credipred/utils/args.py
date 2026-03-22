@@ -78,6 +78,10 @@ class MetaArguments:
         default=False,
         metadata={'help': 'Reverse src,dst order.'},
     )
+    is_regression: bool = field(
+        default=False,
+        metadata={'help': 'Is the task a regression or classification problem'},
+    )
     index_col: int = field(
         default=1,
         metadata={
@@ -152,10 +156,6 @@ class DataArguments:
         metadata={'help': 'Number of test splits to do for uncertainty estimates.'},
         default=1,
     )
-    is_regression: bool = field(
-        default=False,
-        metadata={'help': 'Is the task a regression or classification problem'},
-    )
 
 
 @dataclass
@@ -198,6 +198,10 @@ class ModelArguments:
     lr: float = field(default=0.001, metadata={'help': 'Learning Rate.'})
     epochs: int = field(default=500, metadata={'help': 'Number of epochs.'})
     runs: int = field(default=100, metadata={'help': 'Number of trials.'})
+    patience: int = field(
+        default=10,
+        metadata={'help': 'Number of epochs to wait before no validation improvement.'},
+    )
     training_method: TrainingMethods = field(
         default=TrainingMethods.DEFAULT,
         metadata={'help': 'What training method to use.'},
