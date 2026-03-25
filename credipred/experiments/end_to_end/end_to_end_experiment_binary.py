@@ -298,6 +298,7 @@ def run_end_to_end_binary_classification(
             lr=model_arguments.lr,
         )
         loss_tuple_epoch_mse: List[Tuple[float, float, float, float, float]] = []
+        best_val_per_epoch = float('inf')
         for epoch in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
             loss_ce, _ = train_(
                 model,
@@ -351,16 +352,19 @@ def run_end_to_end_binary_classification(
                     test_random_acc,
                 ),
             )
-            if valid_ce_loss < global_best_val_loss:
-                global_best_val_loss = valid_ce_loss
-                best_state_dict = model.state_dict()
+            if valid_ce_loss < best_val_per_epoch:
+                best_val_per_epoch = valid_ce_loss
                 patience_counter = 0
             else:
                 patience_counter += 1
                 if patience_counter >= patience:
                     logging.info(f'Early stopping at epoch {epoch}')
-                    logging.info(f'Best validation loss {global_best_val_loss}')
+                    logging.info(f'Best epoch validation loss {best_val_per_epoch}')
                     break
+
+        if best_val_per_epoch < global_best_val_loss:
+            global_best_val_loss = best_val_per_epoch
+            best_state_dict = model.state_dict()
 
         loss_tuple_run_mse.append(loss_tuple_epoch_mse)
 
