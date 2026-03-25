@@ -5,7 +5,7 @@ command:
   - run
   - ${program}
   - "--config-file"
-  - "configs/binary/dec/updates/test_end_to_end.yaml"
+  - "configs/binary/dec/updates/base_gat_rni.yaml"
 metric:
   name: val_acc
   goal: maximize
@@ -15,7 +15,7 @@ parameters:
   normalization:
     values: ["batch_norm", "layer_norm", "none"]
   num_neighbors:
-    values: [[10, 10], [15, 10, 5], [20, 20, 20], [-1]]
+    values: [[15, 10, 5], [20, 20, 20], [30, 30, 30]]
   batch_size:
     values: [32, 64, 128, 256]
   dropout:
