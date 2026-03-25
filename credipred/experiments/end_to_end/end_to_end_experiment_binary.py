@@ -14,6 +14,7 @@ from credipred.dataset.dataset import WebGraphDataset
 from credipred.gnn.model import Model
 from credipred.head.decoder import LabelPredictor
 from credipred.utils.args import DataArguments, ModelArguments
+from credipred.utils.domain_handler import reverse_domain
 from credipred.utils.enums import Metric, TrainingMethods
 from credipred.utils.logger import Logger
 from credipred.utils.plot import Scoring, plot_avg_loss
@@ -35,6 +36,8 @@ def get_text_embeddings(
     text_embeddings_used = 0
     for i, node_idx in enumerate(seed_nodes):
         name = idx_to_domain[node_idx.item()]
+        logging.info(f'Name: {name}')
+        logging.info(f'Reverse Name: {reverse_domain(name)}')
         if name in embeddings_lookup_table:
             wet_file_name = embeddings_lookup_table[name]
             if wet_file_name in embedding_dict_cache:
