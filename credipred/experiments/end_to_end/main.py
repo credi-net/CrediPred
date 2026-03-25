@@ -3,8 +3,9 @@ import logging
 import pathlib
 from typing import Dict, cast
 
-from credipred.dataset.dataset import WebGraphDataset
+from credipred.dataset.dataset import DATASETS, WebGraphDataset
 from credipred.encoders.encoder import Encoder
+from credipred.encoders.encoders import ENCODERS
 from credipred.experiments.end_to_end.end_to_end_experiment_binary import (
     run_end_to_end_binary_classification,
 )
@@ -12,7 +13,6 @@ from credipred.utils.args import MetaArguments, parse_args
 from credipred.utils.logger import setup_logging
 from credipred.utils.path import get_root_dir
 from credipred.utils.readers import get_embeddings_lookup
-from credipred.utils.registry import DATASETS, ENCODERS
 from credipred.utils.seed import seed_everything
 
 parser = argparse.ArgumentParser(
