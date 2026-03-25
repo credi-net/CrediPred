@@ -294,7 +294,9 @@ def run_end_to_end_binary_classification(
             dropout=model_arguments.dropout,
             binary=True,
         ).to(device)
-        mlp_model = LabelPredictor(in_dim=(model_arguments.hidden_channels + 64))
+        mlp_model = LabelPredictor(in_dim=(model_arguments.hidden_channels + 64)).to(
+            device
+        )
         model = torch.nn.ModuleList([gnn_model, mlp_model])
         optimizer = torch.optim.AdamW(
             model.parameters(),
