@@ -69,8 +69,8 @@ class RNIEncoder(Encoder):
 
 @ENCODERS.register('PRE')
 class TextEmbeddingEncoder(Encoder):
-    def __init__(self, default_dimension: int, max_cache_size: int = 20):
-        self.default_dimension = default_dimension
+    def __init__(self, dimension: int, max_cache_size: int = 20):
+        self.dimension = dimension
         self.max_cache_size = max_cache_size
 
     def __call__(
@@ -80,9 +80,7 @@ class TextEmbeddingEncoder(Encoder):
         text_embeddings_used = 0
         rni_used = 0
         n = len(domain_names)
-        out = torch.empty(
-            (n, self.default_dimension), dtype=torch.float32, device='cpu'
-        )
+        out = torch.empty((n, self.dimension), dtype=torch.float32, device='cpu')
         # Least Recently Used Cache (LRU)
         embedding_dict_cache: OrderedDict[str, Dict] = OrderedDict()
         for i, domain_name in tqdm(enumerate(domain_names), desc='Domain lookup'):
@@ -104,10 +102,10 @@ class TextEmbeddingEncoder(Encoder):
                 embeddings = [e[1] for e in entries if len(e) == 2]
                 stacked_embs = torch.tensor(np.array(embeddings), dtype=torch.float32)
                 aggregated_emb = torch.mean(stacked_embs, dim=0)
-                out[i] = aggregated_emb[0 : self.default_dimension]
+                out[i] = aggregated_emb[0 : self.dimension]
                 text_embeddings_used += 1
             else:
-                out[i] = torch.rand(self.default_dimension, dtype=torch.float32)
+                out[i] = torch.rand(self.dimension, dtype=torch.float32)
                 rni_used += 1
         logging.info(f'Dimension of stacked embeddings: {out.shape}')
         logging.info(f'Text embeddings used: {text_embeddings_used}')
@@ -117,8 +115,8 @@ class TextEmbeddingEncoder(Encoder):
 
 @ENCODERS.register('MULTI')
 class MultiSnapTextEmbeddingEncoder(Encoder):
-    def __init__(self, default_dimension: int, max_cache_size: int = 50):
-        self.default_dimension = default_dimension
+    def __init__(self, dimension: int, max_cache_size: int = 50):
+        self.dimension = dimension
         self.max_cache_size = max_cache_size
 
     def __call__(
@@ -136,9 +134,7 @@ class MultiSnapTextEmbeddingEncoder(Encoder):
         text_embeddings_used = 0
         rni_used = 0
         n = len(domain_names)
-        out = torch.empty(
-            (n, self.default_dimension), dtype=torch.float32, device='cpu'
-        )
+        out = torch.empty((n, self.dimension), dtype=torch.float32, device='cpu')
         # Least Recently Used Cache (LRU)
         embedding_dict_cache: OrderedDict[str, Dict] = OrderedDict()
 
@@ -176,13 +172,13 @@ class MultiSnapTextEmbeddingEncoder(Encoder):
                         np.array(all_domain_embeddings), dtype=torch.float32
                     )
                     aggregated_emb = torch.mean(stacked_embs, dim=0)
-                    out[i] = aggregated_emb[0 : self.default_dimension]
+                    out[i] = aggregated_emb[0 : self.dimension]
                     text_embeddings_used += 1
                 else:
-                    out[i] = torch.rand(self.default_dimension)
+                    out[i] = torch.rand(self.dimension)
                     rni_used += 1
             else:
-                out[i] = torch.rand(self.default_dimension, dtype=torch.float32)
+                out[i] = torch.rand(self.dimension, dtype=torch.float32)
                 rni_used += 1
         logging.info(f'Dimension of stacked embeddings: {out.shape}')
         logging.info(f'Text embeddings used: {text_embeddings_used}')
