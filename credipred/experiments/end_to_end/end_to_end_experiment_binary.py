@@ -175,12 +175,13 @@ def evaluate(
         if mask.sum() == 0:
             continue
         seed_preds = preds[:n_seed]
+        seed_nodes = batch.n_id[:n_seed]
         seed_targets = targets[:n_seed]
         # MEAN: 0.546
         mean_preds = torch.full((n_seed, 2), -100.0).to(device)
         mean_preds[:, 1] = 0.0  # High logit for class 1
         seed_text_embeddings = get_text_embeddings(
-            embeddings_lookup_table, embeddings_location, n_seed, device
+            embeddings_lookup_table, embeddings_location, seed_nodes, device
         )
         pred_text_gnn_embeddings = torch.cat(
             (seed_preds, seed_text_embeddings), dim=1
