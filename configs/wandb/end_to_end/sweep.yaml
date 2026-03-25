@@ -1,0 +1,32 @@
+program: credipred/experiments/end_to_end/wandb_main.py
+method: bayes
+command:
+  - uv
+  - run
+  - ${program}
+  - "--config-file"
+  - "configs/binary/dec/updates/test_end_to_end.yaml"
+metric:
+  name: val_acc
+  goal: maximize
+parameters:
+  num_layers:
+    values: [2, 3, 4, 5]
+  normalization:
+    values: ["batch_norm", "layer_norm", "none"]
+  num_neighbors:
+    values: [[10, 10], [15, 10, 5], [20, 20, 20], [-1]]
+  batch_size:
+    values: [32, 64, 128, 256]
+  dropout:
+    distribution: uniform
+    min: 0.0
+    max: 0.5
+  weight_decay:
+    distribution: log_uniform_values
+    min: 1e-6
+    max: 1e-3
+  lr:
+    distribution: log_uniform_values
+    min: 1e-5
+    max: 1e-2
