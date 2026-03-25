@@ -41,7 +41,7 @@ class MetaArguments:
     database_folder: Union[str, List[str]] = field(
         metadata={'help': 'The folder containing the relational database.'},
     )
-    split_folder: Union[str, List[str]] = field(
+    split_dir: Union[str, List[str]] = field(
         metadata={'help': 'The folder containing the splits.'},
     )
     embedding_location: Union[str, List[str]] = field(
@@ -134,7 +134,7 @@ class MetaArguments:
         self.edge_file = resolve_paths(self.edge_file)
         self.target_file = resolve_paths(self.target_file)
         self.database_folder = resolve_paths(self.database_folder)
-        self.split_folder = resolve_paths(self.split_folder)
+        self.split_dir = resolve_paths(self.split_dir)
         self.processed_location = resolve_paths(self.processed_location)
         self.embedding_location = resolve_paths(self.embedding_location)
 
