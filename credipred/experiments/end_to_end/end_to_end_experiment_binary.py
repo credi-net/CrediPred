@@ -27,9 +27,10 @@ def get_text_embeddings(
     embeddings_lookup_table: Dict[str, str],
     embedding_location: Path,
     seed_nodes: torch.Tensor,
+    device: torch.device,
 ) -> torch.Tensor:
     n = len(seed_nodes)
-    out = torch.empty((n, 64), dtype=torch.float32, device='cpu')
+    out = torch.empty((n, 64), dtype=torch.float32, device=device)
     rni_used = 0
     text_embeddings_used = 0
     for i, node_idx in enumerate(seed_nodes):
@@ -123,7 +124,7 @@ def train_(
                     batch_weights = None
 
         seed_text_embeddings = get_text_embeddings(
-            embeddings_lookup_table, embeddings_location, seed_nodes
+            embeddings_lookup_table, embeddings_location, seed_nodes, device
         )
 
         pred_text_gnn_embeddings = torch.cat(
@@ -179,7 +180,7 @@ def evaluate(
         mean_preds = torch.full((n_seed, 2), -100.0).to(device)
         mean_preds[:, 1] = 0.0  # High logit for class 1
         seed_text_embeddings = get_text_embeddings(
-            embeddings_lookup_table, embeddings_location, n_seed
+            embeddings_lookup_table, embeddings_location, n_seed, device
         )
         pred_text_gnn_embeddings = torch.cat(
             (seed_preds, seed_text_embeddings), dim=1
@@ -223,6 +224,7 @@ def run_end_to_end_binary_classification(
     domain_to_idx_mapping = dataset.get_mapping()
     global idx_to_domain
     idx_to_domain = {v: k for k, v in domain_to_idx_mapping.items()}
+    logging.info('idx to domain mapping completed.')
     split_idx = dataset.get_idx_split()
     logging.info(
         'Setting up training for task of: %s on model: %s',
