@@ -7,6 +7,7 @@ from typing import Dict, List, Tuple
 import numpy as np
 import torch
 import torch.nn.functional as F
+import wandb
 from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
 
@@ -333,6 +334,15 @@ def run_end_to_end_binary_classification(
                 'test_mask',
                 embeddings_location,
                 embeddings_lookup_table,
+            )
+            wandb.log(
+                {
+                    'epoch': epoch,
+                    'train_acc': train_acc,
+                    'val_acc': valid_acc,
+                    'val_loss': valid_ce_loss,
+                    'test_acc': test_acc,
+                }
             )
             result = (
                 train_acc,
