@@ -35,9 +35,7 @@ def get_text_embeddings(
     rni_used = 0
     text_embeddings_used = 0
     for i, node_idx in enumerate(seed_nodes):
-        name = idx_to_domain[node_idx.item()]
-        logging.info(f'Name: {name}')
-        logging.info(f'Reverse Name: {reverse_domain(name)}')
+        name = reverse_domain(idx_to_domain[node_idx.item()])
         if name in embeddings_lookup_table:
             wet_file_name = embeddings_lookup_table[name]
             if wet_file_name in embedding_dict_cache:
