@@ -32,8 +32,6 @@ def get_text_embeddings(
 ) -> torch.Tensor:
     n = len(seed_nodes)
     out = torch.empty((n, 64), dtype=torch.float32, device=device)
-    rni_used = 0
-    text_embeddings_used = 0
     for i, node_idx in enumerate(seed_nodes):
         name = reverse_domain(idx_to_domain[node_idx.item()])
         if name in embeddings_lookup_table:
@@ -51,14 +49,9 @@ def get_text_embeddings(
             stacked_embs = torch.tensor(np.array(embeddings), dtype=torch.float32)
             aggregated_emb = torch.mean(stacked_embs, dim=0)
             out[i] = aggregated_emb[0:64]
-            text_embeddings_used += 1
         else:
             out[i] = torch.rand(64, dtype=torch.float32)
-            rni_used += 1
 
-    logging.info(
-        f'Text embeddings used: {text_embeddings_used}, RNI embeddings used: {rni_used}'
-    )
     return out
 
 
@@ -195,7 +188,7 @@ def evaluate(
         total_mean_loss += mean_loss.item()
         total_samples += mask.sum().item()
 
-        all_preds.append(pred_text_gnn_embeddings[mask].argmax(dim=-1))
+        all_preds.append(predictions[mask].argmax(dim=-1))
         all_mean_preds.append(mean_preds[mask].argmax(dim=-1))
         all_targets.append(seed_targets[mask])
 
