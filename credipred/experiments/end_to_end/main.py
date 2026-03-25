@@ -68,13 +68,13 @@ def main() -> None:
         root / cast(str, meta_args.weights_directory) / f'{meta_args.target_col}'
     )
 
-    if args.embedding_location:
-        embeddings_location = pathlib.Path(args.embedding_location)
+    if meta_args.embedding_location:
+        embeddings_location = pathlib.Path(cast(str, meta_args.embedding_location))
     else:
         embeddings_location = pathlib.Path()
 
     logging.info(f'Embedding location: {embeddings_location}')
-    embedding_lookup = args.embedding_lookup
+    embedding_lookup = cast(str, meta_args.embedding_lookup)
 
     embeddings_lookup_table = get_embeddings_lookup(
         str(embeddings_location / embedding_lookup)
