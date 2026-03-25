@@ -50,6 +50,7 @@ def main() -> None:
     args = parser.parse_args()
     config_file_path = root / args.config_file
     meta_args, experiment_args = parse_args(config_file_path)
+    breakpoint()
     setup_logging(meta_args.log_file_path)
     seed_everything(meta_args.global_seed)
 
