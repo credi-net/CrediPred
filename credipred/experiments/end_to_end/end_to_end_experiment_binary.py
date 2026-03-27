@@ -72,7 +72,9 @@ def train_(
     all_targets = []
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
         optimizer.zero_grad()
+        logging.info(f'Batch device (pre-transfer): {batch.x.device}')
         batch = batch.to(device)
+        logging.info(f'Batch device (post-transfer): {batch.x.device}')
         preds = model[0].get_embeddings(batch.x, batch.edge_index)
         # Only compute loss on seed nodes (first batch_size nodes).
         n_seed = batch.batch_size
