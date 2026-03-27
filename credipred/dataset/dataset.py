@@ -123,7 +123,9 @@ class WebGraphDataset(InMemoryDataset, ABC):
         self._custome_processed_dir = processed_dir
         logging.info(f'Processed Directory: {self._custome_processed_dir}')
         super().__init__(root, transform, pre_transform)
-        self.data, self.slices = torch.load(self.processed_paths[0], weights_only=False)
+        self.data, self.slices = torch.load(
+            self.processed_paths[0], map_location='cpu', weights_only=False
+        )
 
     @property
     def raw_dir(self) -> str:
