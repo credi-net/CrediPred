@@ -32,7 +32,7 @@ def get_text_embeddings(
     device: torch.device,
 ) -> torch.Tensor:
     n = len(seed_nodes)
-    out = torch.empty((n, 64), dtype=torch.float32, device=device)
+    out = torch.empty((n, 256), dtype=torch.float32, device=device)
     for i, node_idx in enumerate(seed_nodes):
         name = reverse_domain(idx_to_domain[node_idx.item()])
         if name in embeddings_lookup_table:
@@ -49,9 +49,9 @@ def get_text_embeddings(
             embeddings = [e[1] for e in entries if len(e) == 2]
             stacked_embs = torch.tensor(np.array(embeddings), dtype=torch.float32)
             aggregated_emb = torch.mean(stacked_embs, dim=0)
-            out[i] = aggregated_emb[0:64]
+            out[i] = aggregated_emb
         else:
-            out[i] = torch.rand(64, dtype=torch.float32)
+            out[i] = torch.rand(256, dtype=torch.float32)
 
     return out
 
@@ -72,9 +72,7 @@ def train_(
     all_targets = []
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
         optimizer.zero_grad()
-        logging.info(f'Batch device (pre-transfer): {batch.x.device}')
         batch = batch.to(device)
-        logging.info(f'Batch device (post-transfer): {batch.x.device}')
         preds = model[0].get_embeddings(batch.x, batch.edge_index)
         # Only compute loss on seed nodes (first batch_size nodes).
         n_seed = batch.batch_size
@@ -298,9 +296,11 @@ def run_end_to_end_binary_classification(
             dropout=model_arguments.dropout,
             binary=True,
         ).to(device)
-        mlp_model = LabelPredictor(in_dim=(model_arguments.hidden_channels + 64)).to(
-            device
-        )
+        # TODO: Introduce paramater for text embedding dimension, i.e text_embedding_dimenaion = 256
+        text_embedding_dimension = 256
+        mlp_model = LabelPredictor(
+            in_dim=(model_arguments.embedding_dimension + text_embedding_dimension)
+        ).to(device)
         model = torch.nn.ModuleList([gnn_model, mlp_model])
         optimizer = torch.optim.AdamW(
             model.parameters(),
