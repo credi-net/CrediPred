@@ -232,6 +232,12 @@ def run_end_to_end_binary_classification(
 
     logging.info(f'Device found: {device}')
 
+    logging.info(f'Dataset features on device: {data.x.device}')
+    logging.info(f'Dataset Edge Index on device: {data.edge_index.device}')
+
+    if data.x.is_cuda:
+        data = data.cpu()
+
     logging.info(f'Training set size: {split_idx["train"].size()}')
     logging.info(f'Validation set size: {split_idx["valid"].size()}')
     logging.info(f'Testing set size: {split_idx["test"].size()}')
