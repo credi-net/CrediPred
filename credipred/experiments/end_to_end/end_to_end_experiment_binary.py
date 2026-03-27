@@ -216,7 +216,7 @@ def run_end_to_end_binary_classification(
     embeddings_location: Path,
     embeddings_lookup_table: Dict[str, str],
 ) -> None:
-    data = dataset[0]
+    data = dataset[0].cpu()
     domain_to_idx_mapping = dataset.get_mapping()
     global idx_to_domain
     idx_to_domain = {v: k for k, v in domain_to_idx_mapping.items()}
