@@ -121,6 +121,7 @@ class WebGraphDataset(InMemoryDataset, ABC):
             self.split_dir = pathlib.Path()
 
         self._custome_processed_dir = processed_dir
+        logging.info(f'Processed Directory: {self._custome_processed_dir}')
         super().__init__(root, transform, pre_transform)
         self.data, self.slices = torch.load(self.processed_paths[0], weights_only=False)
 
