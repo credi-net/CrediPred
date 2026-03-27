@@ -47,7 +47,7 @@ class MetaArguments:
     embedding_location: Union[str, List[str]] = field(
         metadata={'help': 'The folder containing the pre-trained text embeddings.'},
     )
-    processed_location: Union[str, List[str]] = field(
+    processed_dir: Union[str, List[str]] = field(
         metadata={'help': 'The location to save the processed feature matrix.'},
     )
     weights_directory: Union[str, List[str]] = field(
@@ -135,7 +135,7 @@ class MetaArguments:
         self.target_file = resolve_paths(self.target_file)
         self.database_folder = resolve_paths(self.database_folder)
         self.split_dir = resolve_paths(self.split_dir)
-        self.processed_location = resolve_paths(self.processed_location)
+        self.processed_dir = resolve_paths(self.processed_dir)
         self.embedding_location = resolve_paths(self.embedding_location)
 
         if self.log_file_path is not None:
