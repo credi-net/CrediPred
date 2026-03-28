@@ -174,7 +174,7 @@ class ModelArguments:
         default=256, metadata={'help': 'Inner dimension of update weight matrix.'}
     )
     normalization: str = field(
-        default=Normalization.BATCH_NORM,
+        default=Normalization.LAYER_NORM,
         metadata={
             'help': 'The normalization method. Choices: none, LayerNorm or BatchNorm.'
         },
