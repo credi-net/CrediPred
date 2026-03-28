@@ -251,6 +251,7 @@ def run_end_to_end_binary_classification(
         num_workers=4,
         pin_memory=True,
         persistent_workers=True,
+        drop_last=True,
     )
     logging.info('Train loader created')
 
@@ -263,6 +264,7 @@ def run_end_to_end_binary_classification(
         num_workers=4,
         pin_memory=True,
         persistent_workers=True,
+        drop_last=True,
     )
 
     logging.info('Valid loader created')
@@ -275,6 +277,7 @@ def run_end_to_end_binary_classification(
         num_workers=4,
         pin_memory=True,
         persistent_workers=True,
+        drop_last=True,
     )
     logging.info('Test loader created')
 
