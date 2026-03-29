@@ -163,6 +163,9 @@ def run_binary_class_gnn_baseline(
 
     logging.info(f'Device found: {device}')
 
+    logging.info(f'Dataset features on device: {data.x.device}')
+    logging.info(f'Dataset Edge Index on device: {data.edge_index.device}')
+
     logging.info(f'Training set size: {split_idx["train"].size()}')
     logging.info(f'Validation set size: {split_idx["valid"].size()}')
     logging.info(f'Testing set size: {split_idx["test"].size()}')
@@ -223,6 +226,7 @@ def run_binary_class_gnn_baseline(
         ).to(device)
         optimizer = torch.optim.AdamW(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch_mse: List[Tuple[float, float, float, float, float]] = []
+        best_val_per_epoch = float('inf')
         for epoch in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
             loss_ce, _ = train_(
                 model, train_loader, optimizer, model_arguments.training_method
@@ -255,8 +259,8 @@ def run_binary_class_gnn_baseline(
                     test_random_acc,
                 ),
             )
-            if valid_ce_loss < global_best_val_loss:
-                global_best_val_loss = valid_ce_loss
+            if valid_ce_loss < best_val_per_epoch:
+                best_val_per_epoch = valid_ce_loss
                 best_state_dict = model.state_dict()
                 patience_counter = 0
             else:
@@ -265,6 +269,10 @@ def run_binary_class_gnn_baseline(
                     logging.info(f'Early stopping at epoch {epoch}')
                     logging.info(f'Best validation loss {global_best_val_loss}')
                     break
+
+        if best_val_per_epoch < global_best_val_loss:
+            global_best_val_loss = best_val_per_epoch
+            best_state_dict = model.state_dict()
 
         loss_tuple_run_mse.append(loss_tuple_epoch_mse)
 

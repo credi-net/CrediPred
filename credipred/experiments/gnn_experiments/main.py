@@ -3,8 +3,9 @@ import logging
 import pathlib
 from typing import Dict, cast
 
-from credipred.dataset.dataset import WebGraphDataset
+from credipred.dataset.dataset import DATASETS, WebGraphDataset
 from credipred.encoders.encoder import Encoder
+from credipred.encoders.encoders import ENCODERS
 from credipred.experiments.gnn_experiments.gnn_experiment import (
     run_gnn_baseline,
 )
@@ -14,7 +15,6 @@ from credipred.experiments.gnn_experiments.gnn_experiment_binary_labels import (
 from credipred.utils.args import MetaArguments, parse_args
 from credipred.utils.logger import setup_logging
 from credipred.utils.path import get_root_dir
-from credipred.utils.registry import DATASETS, ENCODERS
 from credipred.utils.seed import seed_everything
 
 parser = argparse.ArgumentParser(
@@ -56,7 +56,7 @@ def main() -> None:
     seed_everything(meta_args.global_seed)
 
     encoding_dict = {
-        idx: ENCODERS.build({'type': val, 'dim': 64})
+        idx: ENCODERS.build({'type': val, 'dim': meta_args.initalization_dimension})
         for idx, val in meta_args.encoder_dict.items()
     }
     logging.info(f'Encoding Dictionary: {encoding_dict}')
