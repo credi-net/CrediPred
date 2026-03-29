@@ -18,8 +18,6 @@ from credipred.utils.args import DataArguments, ModelArguments
 from credipred.utils.domain_handler import reverse_domain
 from credipred.utils.enums import Metric, TrainingMethods
 from credipred.utils.logger import Logger
-from credipred.utils.plot import Scoring, plot_avg_loss
-from credipred.utils.save import save_loss_results
 
 embedding_dict_cache: OrderedDict[str, Dict] = OrderedDict()
 idx_to_domain: Dict = dict()
@@ -396,12 +394,12 @@ def run_end_to_end_binary_classification(
     logging.info(f'Model: {model_arguments} weights saved to: {best_model_path}')
     logging.info('*** Statistics ***')
     logging.info(logger.get_statistics(metric=Metric.acc, higher_is_better=True))
-    logging.info(logger.get_avg_statistics(metric=Metric.acc, higher_is_better=True))
-    logging.info('Constructing plots')
-    plot_avg_loss(
-        loss_tuple_run_mse, model_arguments.model, Scoring.acc, 'loss_plot.png'
-    )
-    logging.info('Saving pkl of results')
-    save_loss_results(
-        loss_tuple_run_mse, model_arguments.model, 'binary_classification'
-    )
+    # logging.info(logger.get_avg_statistics(metric=Metric.acc, higher_is_better=True))
+    # logging.info('Constructing plots')
+    # plot_avg_loss(
+    #     loss_tuple_run_mse, model_arguments.model, Scoring.acc, 'loss_plot.png'
+    # )
+    # logging.info('Saving pkl of results')
+    # save_loss_results(
+    #     loss_tuple_run_mse, model_arguments.model, 'binary_classification'
+    # )
