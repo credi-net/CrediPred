@@ -70,6 +70,9 @@ class MetaArguments:
         default='dst',
         metadata={'help': 'The destination column name in the edge file.'},
     )
+    initalization_dimension: int = field(
+        default=64, metadata={'help': 'Dimension of vectors in the feature matrix.'}
+    )
     force_undirected: bool = field(
         default=False,
         metadata={'help': 'Forces the adjacency matrix to be undirected.'},

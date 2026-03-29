@@ -54,7 +54,9 @@ def main() -> None:
     seed_everything(meta_args.global_seed)
 
     encoding_dict = {
-        idx: ENCODERS.build({'type': val, 'dimension': 64})
+        idx: ENCODERS.build(
+            {'type': val, 'dimension': meta_args.initalization_dimension}
+        )
         for idx, val in meta_args.encoder_dict.items()
     }
     logging.info(f'Encoding Dictionary: {encoding_dict}')
