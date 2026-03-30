@@ -8,14 +8,11 @@ import torch
 from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
 
-from credipred.dataset.temporal_dataset import (
-    TemporalBinaryDatasetAllGlobalSplits,
-)
+from credipred.dataset.dataset import DATASETS, WebGraphDataset
 from credipred.encoders.encoder import Encoder
-from credipred.encoders.pre_embedding_encoder import TextEmbeddingEncoder
-from credipred.encoders.rni_encoding import RNIEncoder
+from credipred.encoders.encoders import ENCODERS
 from credipred.gnn.model import Model
-from credipred.utils.args import ModelArguments, parse_args
+from credipred.utils.args import MetaArguments, ModelArguments, parse_args
 from credipred.utils.logger import setup_logging
 from credipred.utils.path import get_root_dir, get_scratch
 from credipred.utils.seed import seed_everything
@@ -34,7 +31,7 @@ parser.add_argument(
 
 def get_embeddings(
     model_arguments: ModelArguments,
-    dataset: TemporalBinaryDatasetAllGlobalSplits,
+    dataset: WebGraphDataset,
     weight_directory: Path,
     scratch: Path,
 ) -> None:
@@ -138,6 +135,24 @@ def get_embeddings(
     logging.info(f'Saved domain embeddings and index to {save_dir}')
 
 
+def build_experiment_dataset(
+    meta_args: MetaArguments, root: Path, encoding_dict: Dict[str, Encoder]
+) -> WebGraphDataset:
+    if meta_args.is_regression:
+        dataset_type = 'Regression'
+    else:
+        dataset_type = 'BinaryGlobal'
+
+    cfg = vars(meta_args).copy()
+
+    return DATASETS.build(
+        cfg={**cfg, 'type': dataset_type},
+        root=root,
+        encoding=encoding_dict,
+        seed=meta_args.global_seed,
+    )
+
+
 def main() -> None:
     root = get_root_dir()
     scratch = get_scratch()
@@ -147,35 +162,17 @@ def main() -> None:
     setup_logging(cast(str, meta_args.log_file_path) + 'GET_EMBEDDINGS.log')
     seed_everything(meta_args.global_seed)
 
-    encoder_classes: Dict[str, Encoder] = {
-        'RNI': RNIEncoder(64),  # TODO: Set this a paramater
-        'PRE': TextEmbeddingEncoder(64),
+    encoding_dict = {
+        idx: ENCODERS.build(
+            {'type': val, 'dimension': meta_args.initalization_dimension}
+        )
+        for idx, val in meta_args.encoder_dict.items()
     }
+    logging.info(f'Encoding Dictionary: {encoding_dict}')
 
-    encoding_dict: Dict[str, Encoder] = {}
-    for index, value in meta_args.encoder_dict.items():
-        encoder_class = encoder_classes[value]
-        encoding_dict[index] = encoder_class
-
-    dataset = TemporalBinaryDatasetAllGlobalSplits(
-        root=f'{root}/data/',
-        node_file=cast(str, meta_args.node_file),
-        edge_file=cast(str, meta_args.edge_file),
-        target_file=cast(str, meta_args.target_file),
-        split_dir=cast(str, meta_args.split_folder),
-        target_col=meta_args.target_col,
-        edge_src_col=meta_args.edge_src_col,
-        edge_dst_col=meta_args.edge_dst_col,
-        index_col=meta_args.index_col,
-        force_undirected=meta_args.force_undirected,
-        switch_source=meta_args.switch_source,
-        encoding=encoding_dict,
-        seed=meta_args.global_seed,
-        processed_dir=cast(str, meta_args.processed_location),
-        embedding_location=cast(str, meta_args.embedding_location),
-        embedding_lookup=cast(str, meta_args.embedding_lookup),
-    )
+    dataset = build_experiment_dataset(meta_args, root, encoding_dict)
     logging.info('In-Memory Dataset loaded.')
+    logging.info(f'Dataset {type(dataset).__name__} loaded.')
     weight_directory = (
         root / cast(str, meta_args.weights_directory) / f'{meta_args.target_col}'
     )
