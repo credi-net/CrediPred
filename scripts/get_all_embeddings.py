@@ -62,7 +62,7 @@ def get_embeddings(
     model.eval()
 
     num_nodes = data.num_nodes
-    all_preds_embeddings = torch.zeros(num_nodes, 256)
+    all_preds_embeddings = torch.zeros(num_nodes, 128)
 
     loader = NeighborLoader(
         data,
