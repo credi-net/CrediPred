@@ -63,6 +63,21 @@ category_to_sub_category: dict[str, list] = {
 }
 
 
+def get_statistics(
+    split_df: pd.DataFrame, labels_annotation_df: pd.DataFrame
+) -> pd.DataFrame:
+    stats = {'domains_occuring_in_labels': 0}
+    annotated_domains = labels_annotation_df['domain'].unique()
+
+    mask = split_df['domain'].isin(annotated_domains)
+
+    count = split_df.loc[mask, 'domain'].nunique()
+
+    stats['domains_occuring_in_labels'] = count
+
+    return pd.DataFrame(stats)
+
+
 def main() -> None:
     args = parser.parse_args()
     setup_logging('KDD_Filtering.log')
@@ -81,6 +96,8 @@ def main() -> None:
     # Find domains where at least one of these columns is 1.
     is_in_category = domains_annoated_df[relevant_cols].any(axis=1)
     valid_domains = domains_annoated_df.loc[is_in_category, 'domain'].unique()
+
+    logging.info(f'Stats: {get_statistics(split_df, domains_annoated_df).head()}')
 
     if args.convert_labels:
         valid_mask = split_df['domain'].isin(valid_domains)
