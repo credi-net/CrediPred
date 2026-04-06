@@ -66,14 +66,13 @@ category_to_sub_category: dict[str, list] = {
 def get_statistics(
     split_df: pd.DataFrame, labels_annotation_df: pd.DataFrame
 ) -> pd.DataFrame:
-    stats = {'domains_occuring_in_labels': 0}
     annotated_domains = labels_annotation_df['domain'].unique()
 
     mask = split_df['domain'].isin(annotated_domains)
 
     count = split_df.loc[mask, 'domain'].nunique()
 
-    stats['domains_occuring_in_labels'] = count
+    stats = {'domains_occuring_in_annotation': [count]}
 
     return pd.DataFrame.from_dict(stats)
 
