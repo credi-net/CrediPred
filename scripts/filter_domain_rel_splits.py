@@ -90,13 +90,16 @@ def main() -> None:
 
     split_df = pd.read_parquet(split_file)
     number_of_original_domains = len(split_df)
-    domains_annoated_df = pd.read_csv(domains_annotated_file)
+    domains_annotated_df = pd.read_csv(domains_annotated_file)
+
+    logging.info(f'Split Dataframe: {split_df.head()}\n')
+    logging.info(f'Annotation Dataframe: {domains_annotated_df.head()}')
 
     # Find domains where at least one of these columns is 1.
-    is_in_category = domains_annoated_df[relevant_cols].any(axis=1)
-    valid_domains = domains_annoated_df.loc[is_in_category, 'domain'].unique()
+    is_in_category = domains_annotated_df[relevant_cols].any(axis=1)
+    valid_domains = domains_annotated_df.loc[is_in_category, 'domain'].unique()
 
-    logging.info(f'Stats: {get_statistics(split_df, domains_annoated_df).head()}')
+    logging.info(f'Stats: {get_statistics(split_df, domains_annotated_df).head()}')
 
     if args.convert_labels:
         valid_mask = split_df['domain'].isin(valid_domains)
