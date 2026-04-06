@@ -104,16 +104,17 @@ def main() -> None:
     valid_domains = domains_annotated_df.loc[is_in_category, 'domain'].unique()
 
     logging.info(f'Stats: {get_statistics(split_df, domains_annotated_df).head()}')
+    original_condition = split_df['domain'].isin(valid_domains)
+    condition_reverse = (
+        split_df['domain'].apply(lambda x: reverse_domain(x)).isin(valid_domains)
+    )
 
     if args.convert_labels:
-        valid_mask = split_df['domain'].isin(valid_domains)
-        split_df['label'] = np.where(split_df[valid_mask], 1, 0)
+        split_df['label'] = np.where(
+            split_df[original_condition | condition_reverse], 1, 0
+        )
 
     else:
-        original_condition = split_df['domain'].isin(valid_domains)
-        condition_reverse = (
-            split_df['domain'].apply(lambda x: reverse_domain(x)).isin(valid_domains)
-        )
         split_df = split_df[original_condition | condition_reverse]
 
     output_path = output_dir / f'filtered_{args.category}_{split_file.name}'
