@@ -65,12 +65,24 @@ class Model(torch.nn.Module):
             )
             self.re_modules.append(residual_module)
 
+        # Is this arch okay for binary task?
+        # Seperate final normalization to decoder
         self.output_normalization = normalization_cls(hidden_channels)
         self.output_linear = nn.Linear(
             in_features=hidden_channels, out_features=out_channels
         )
+        # Hard coded, output dimension
+        # Is this initalized as weights in pytorch backend? Uncessary space complexity?
+        # TODO:
         self.node_predictor = NodePredictor(in_dim=out_channels, out_dim=1)
         self.label_predictor = LabelPredictor(in_dim=out_channels, out_dim=2)
+
+    # TODO: split encoder, decoder
+    # Paramaterize decoder w/ batch, layer
+    # Decoder should have the normalization
+    # Re_module loop encapsulate the normalization
+    # Modulate the decoder, just have the encoding via GNN operator. Standardize the decoder.
+    # Why am I using optional here?
 
     def forward(self, x: Tensor, edge_index: Tensor | None = None) -> Tensor:
         x = self.input_linear(x)
@@ -92,15 +104,13 @@ class Model(torch.nn.Module):
         return x
 
     def get_embeddings(self, x: Tensor, edge_index: Tensor | None = None) -> Tensor:
+        assert edge_index is not None
         x = self.input_linear(x)
         x = self.dropout(x)
         x = self.act(x)
 
         for re_module in self.re_modules:
-            if edge_index is not None:
-                x = re_module(x, edge_index)
-            else:
-                x = re_module(x)
+            x = re_module(x, edge_index)
 
         x = self.output_normalization(x)
         x = self.output_linear(x)

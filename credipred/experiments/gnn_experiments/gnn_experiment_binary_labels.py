@@ -74,6 +74,7 @@ def train_(
                 else:
                     batch_weights = None
 
+        # Should I use softmax in decoder? Or rely on loss?
         loss = F.nll_loss(seed_preds, seed_targets, weight=batch_weights)
         loss.backward()
         optimizer.step()

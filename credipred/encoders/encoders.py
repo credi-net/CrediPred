@@ -64,7 +64,9 @@ class RNIEncoder(Encoder):
         self.dimension = dimension
 
     def __call__(self, length: int) -> Tensor:
-        return torch.rand(length, self.dimension)
+        return torch.rand(
+            length, self.dimension, dtype=torch.float16
+        )  # TODO: Try lower float representation
 
 
 @ENCODERS.register('PRE')

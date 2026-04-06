@@ -63,9 +63,8 @@ def main() -> None:
     }
     logging.info(f'Encoding Dictionary: {encoding_dict}')
 
-    logging.info('In-Memory Dataset loaded.')
-
     dataset = build_experiment_dataset(meta_args, root, encoding_dict)
+    logging.info('In-Memory Dataset loaded.')
     logging.info(f'Dataset {type(dataset).__name__} loaded.')
 
     weights_path = (

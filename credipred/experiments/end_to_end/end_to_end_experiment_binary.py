@@ -18,6 +18,8 @@ from credipred.utils.args import DataArguments, ModelArguments
 from credipred.utils.domain_handler import reverse_domain
 from credipred.utils.enums import Metric, TrainingMethods
 from credipred.utils.logger import Logger
+from credipred.utils.plot import Scoring, plot_avg_loss
+from credipred.utils.save import save_loss_results
 
 embedding_dict_cache: OrderedDict[str, Dict] = OrderedDict()
 idx_to_domain: Dict = dict()
@@ -30,7 +32,10 @@ def get_text_embeddings(
     device: torch.device,
 ) -> torch.Tensor:
     n = len(seed_nodes)
-    out = torch.empty((n, 256), dtype=torch.float32, device=device)
+    # TODO:
+    out = torch.empty(
+        (n, 256), dtype=torch.float32, device=device
+    )  # We can try float 16
     for i, node_idx in enumerate(seed_nodes):
         name = reverse_domain(idx_to_domain[node_idx.item()])
         if name in embeddings_lookup_table:
@@ -124,6 +129,8 @@ def train_(
             (seed_preds, seed_text_embeddings), dim=1
         )  # Dimension one: horizontal concatenation.
 
+        # NN.crossenropy() does softmax for you, directly applied to logits
+        # this is numerically more stable?
         predictions = model[1](pred_text_gnn_embeddings)
         loss = F.nll_loss(predictions, seed_targets, weight=batch_weights)
         loss.backward()
@@ -240,6 +247,10 @@ def run_end_to_end_binary_classification(
     logging.info(f'Validation set size: {split_idx["valid"].size()}')
     logging.info(f'Testing set size: {split_idx["test"].size()}')
 
+    # TODO:
+    # Check if previous batches off-load the GPU (GPU Profiling)
+    # Profile model size, batch, etc.
+    # See the constant memory usage accross epochs
     train_loader = NeighborLoader(
         data,
         input_nodes=split_idx['train'],
@@ -297,7 +308,6 @@ def run_end_to_end_binary_classification(
             dropout=model_arguments.dropout,
             binary=True,
         ).to(device)
-        # TODO: Introduce paramater for text embedding dimension, i.e text_embedding_dimenaion = 256
         text_embedding_dimension = 256
         mlp_model = LabelPredictor(
             in_dim=(model_arguments.embedding_dimension + text_embedding_dimension)
@@ -394,12 +404,12 @@ def run_end_to_end_binary_classification(
     logging.info(f'Model: {model_arguments} weights saved to: {best_model_path}')
     logging.info('*** Statistics ***')
     logging.info(logger.get_statistics(metric=Metric.acc, higher_is_better=True))
-    # logging.info(logger.get_avg_statistics(metric=Metric.acc, higher_is_better=True))
-    # logging.info('Constructing plots')
-    # plot_avg_loss(
-    #     loss_tuple_run_mse, model_arguments.model, Scoring.acc, 'loss_plot.png'
-    # )
-    # logging.info('Saving pkl of results')
-    # save_loss_results(
-    #     loss_tuple_run_mse, model_arguments.model, 'binary_classification'
-    # )
+    logging.info(logger.get_avg_statistics(metric=Metric.acc, higher_is_better=True))
+    logging.info('Constructing plots')
+    plot_avg_loss(
+        loss_tuple_run_mse, model_arguments.model, Scoring.acc, 'loss_plot.png'
+    )
+    logging.info('Saving pkl of results')
+    save_loss_results(
+        loss_tuple_run_mse, model_arguments.model, 'binary_classification'
+    )
