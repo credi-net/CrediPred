@@ -41,13 +41,13 @@ class MetaArguments:
     database_folder: Union[str, List[str]] = field(
         metadata={'help': 'The folder containing the relational database.'},
     )
-    split_folder: Union[str, List[str]] = field(
+    split_dir: Union[str, List[str]] = field(
         metadata={'help': 'The folder containing the splits.'},
     )
     embedding_location: Union[str, List[str]] = field(
         metadata={'help': 'The folder containing the pre-trained text embeddings.'},
     )
-    processed_location: Union[str, List[str]] = field(
+    processed_dir: Union[str, List[str]] = field(
         metadata={'help': 'The location to save the processed feature matrix.'},
     )
     weights_directory: Union[str, List[str]] = field(
@@ -69,6 +69,9 @@ class MetaArguments:
     edge_dst_col: str = field(
         default='dst',
         metadata={'help': 'The destination column name in the edge file.'},
+    )
+    initalization_dimension: int = field(
+        default=64, metadata={'help': 'Dimension of vectors in the feature matrix.'}
     )
     force_undirected: bool = field(
         default=False,
@@ -134,8 +137,8 @@ class MetaArguments:
         self.edge_file = resolve_paths(self.edge_file)
         self.target_file = resolve_paths(self.target_file)
         self.database_folder = resolve_paths(self.database_folder)
-        self.split_folder = resolve_paths(self.split_folder)
-        self.processed_location = resolve_paths(self.processed_location)
+        self.split_dir = resolve_paths(self.split_dir)
+        self.processed_dir = resolve_paths(self.processed_dir)
         self.embedding_location = resolve_paths(self.embedding_location)
 
         if self.log_file_path is not None:
@@ -174,7 +177,7 @@ class ModelArguments:
         default=256, metadata={'help': 'Inner dimension of update weight matrix.'}
     )
     normalization: str = field(
-        default=Normalization.BATCH_NORM,
+        default=Normalization.LAYER_NORM,
         metadata={
             'help': 'The normalization method. Choices: none, LayerNorm or BatchNorm.'
         },

@@ -102,10 +102,10 @@ class Logger(object):
             lines.append(f'  Final Train {metric.value}: {result[optimal, 0]:.4f}')
             lines.append(f'   Final Test {metric.value}: {result[optimal, 2]:.4f}')
         else:
-            result = torch.tensor(self.results)
-
             best_results = []
-            for r in result:
+
+            for run in self.results:
+                r = torch.tensor(run)
                 train = r[:, 0].min().item()
                 valid = r[:, 1].min().item()
                 test = r[:, 2].min().item()

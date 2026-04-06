@@ -1,26 +1,66 @@
 import logging
+import pickle
+from collections import OrderedDict
 from pathlib import Path
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
+import numpy as np
 import torch
 import torch.nn.functional as F
+import wandb
 from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
 
 from credipred.dataset.dataset import WebGraphDataset
 from credipred.gnn.model import Model
+from credipred.head.decoder import LabelPredictor
 from credipred.utils.args import DataArguments, ModelArguments
+from credipred.utils.domain_handler import reverse_domain
 from credipred.utils.enums import Metric, TrainingMethods
 from credipred.utils.logger import Logger
-from credipred.utils.plot import Scoring, plot_avg_loss
-from credipred.utils.save import save_loss_results
+
+embedding_dict_cache: OrderedDict[str, Dict] = OrderedDict()
+idx_to_domain: Dict = dict()
+
+
+def get_text_embeddings(
+    embeddings_lookup_table: Dict[str, str],
+    embedding_location: Path,
+    seed_nodes: torch.Tensor,
+    device: torch.device,
+) -> torch.Tensor:
+    n = len(seed_nodes)
+    out = torch.empty((n, 256), dtype=torch.float32, device=device)
+    for i, node_idx in enumerate(seed_nodes):
+        name = reverse_domain(idx_to_domain[node_idx.item()])
+        if name in embeddings_lookup_table:
+            wet_file_name = embeddings_lookup_table[name]
+            if wet_file_name in embedding_dict_cache:
+                embedding_dict_cache.move_to_end(wet_file_name)
+            else:
+                path = embedding_location / (wet_file_name + '.pkl')
+                with open(path, 'rb') as file:
+                    logging.info('Pushing to embedding dictionary.')
+                    embedding_dict_cache[wet_file_name] = pickle.load(file)
+
+            entries = embedding_dict_cache[wet_file_name][name]
+            embeddings = [e[1] for e in entries if len(e) == 2]
+            stacked_embs = torch.tensor(np.array(embeddings), dtype=torch.float32)
+            aggregated_emb = torch.mean(stacked_embs, dim=0)
+            out[i] = aggregated_emb
+        else:
+            out[i] = torch.rand(256, dtype=torch.float32)
+
+    return out
 
 
 def train_(
-    model: torch.nn.Module,
+    model: torch.nn.ModuleList,
     train_loader: NeighborLoader,
     optimizer: torch.optim.AdamW,
     training_method: TrainingMethods,
+    embeddings_location: Path,
+    embeddings_lookup_table: Dict[str, str],
 ) -> Tuple[float, float]:
     model.train()
     device = next(model.parameters()).device
@@ -31,9 +71,10 @@ def train_(
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
         optimizer.zero_grad()
         batch = batch.to(device)
-        preds = model(batch.x, batch.edge_index)
+        preds = model[0].get_embeddings(batch.x, batch.edge_index)
         # Only compute loss on seed nodes (first batch_size nodes).
         n_seed = batch.batch_size
+        seed_nodes = batch.n_id[:n_seed]
         seed_preds = preds[:n_seed]
         seed_targets = batch.y[:n_seed]
         batch_weights = None
@@ -59,6 +100,7 @@ def train_(
                 active_mask[neg_idx] = True
 
                 seed_preds = seed_preds[active_mask]
+                seed_nodes = seed_nodes[active_mask]
                 seed_targets = seed_targets[active_mask]
 
             case TrainingMethods.WEIGHTED_LOSS:
@@ -74,12 +116,21 @@ def train_(
                 else:
                     batch_weights = None
 
-        loss = F.nll_loss(seed_preds, seed_targets, weight=batch_weights)
+        seed_text_embeddings = get_text_embeddings(
+            embeddings_lookup_table, embeddings_location, seed_nodes, device
+        )
+
+        pred_text_gnn_embeddings = torch.cat(
+            (seed_preds, seed_text_embeddings), dim=1
+        )  # Dimension one: horizontal concatenation.
+
+        predictions = model[1](pred_text_gnn_embeddings)
+        loss = F.nll_loss(predictions, seed_targets, weight=batch_weights)
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
         total_samples += seed_targets.size(0)
-        all_preds.append(seed_preds.argmax(dim=-1))
+        all_preds.append(predictions.argmax(dim=-1))
         all_targets.append(seed_targets)
 
     avg_ce = total_loss / total_samples
@@ -92,9 +143,11 @@ def train_(
 
 @torch.no_grad()
 def evaluate(
-    model: torch.nn.Module,
+    model: torch.nn.ModuleList,
     loader: NeighborLoader,
     mask_name: str,
+    embeddings_location: Path,
+    embeddings_lookup_table: Dict[str, str],
 ) -> Tuple[float, float, float, float]:
     model.eval()
     device = next(model.parameters()).device
@@ -106,7 +159,7 @@ def evaluate(
     all_targets = []
     for batch in loader:
         batch = batch.to(device)
-        preds = model(batch.x, batch.edge_index)
+        preds = model[0].get_embeddings(batch.x, batch.edge_index)
         targets = batch.y
         # Only evaluate seed nodes (first batch_size nodes) to avoid
         # double-counting nodes that appear as neighbors in other batches.
@@ -115,18 +168,26 @@ def evaluate(
         if mask.sum() == 0:
             continue
         seed_preds = preds[:n_seed]
+        seed_nodes = batch.n_id[:n_seed]
         seed_targets = targets[:n_seed]
         # MEAN: 0.546
         mean_preds = torch.full((n_seed, 2), -100.0).to(device)
         mean_preds[:, 1] = 0.0  # High logit for class 1
-        loss = F.nll_loss(seed_preds[mask], seed_targets[mask])
+        seed_text_embeddings = get_text_embeddings(
+            embeddings_lookup_table, embeddings_location, seed_nodes, device
+        )
+        pred_text_gnn_embeddings = torch.cat(
+            (seed_preds, seed_text_embeddings), dim=1
+        )  # Dimension one: horizontal concatenation.
+        predictions = model[1](pred_text_gnn_embeddings)
+        loss = F.nll_loss(predictions[mask], seed_targets[mask])
         mean_loss = F.nll_loss(mean_preds[mask], seed_targets[mask])
 
         total_loss += loss.item()
         total_mean_loss += mean_loss.item()
         total_samples += mask.sum().item()
 
-        all_preds.append(seed_preds[mask].argmax(dim=-1))
+        all_preds.append(predictions[mask].argmax(dim=-1))
         all_mean_preds.append(mean_preds[mask].argmax(dim=-1))
         all_targets.append(seed_targets[mask])
 
@@ -145,13 +206,19 @@ def evaluate(
     return (avg_ce, acc, acc_mean, acc_random)
 
 
-def run_binary_class_gnn_baseline(
+def run_end_to_end_binary_classification(
     data_arguments: DataArguments,
     model_arguments: ModelArguments,
     weight_directory: Path,
     dataset: WebGraphDataset,
+    embeddings_location: Path,
+    embeddings_lookup_table: Dict[str, str],
 ) -> None:
-    data = dataset[0]
+    data = dataset[0].cpu()
+    domain_to_idx_mapping = dataset.get_mapping()
+    global idx_to_domain
+    idx_to_domain = {v: k for k, v in domain_to_idx_mapping.items()}
+    logging.info('idx to domain mapping completed.')
     split_idx = dataset.get_idx_split()
     logging.info(
         'Setting up training for task of: %s on model: %s',
@@ -166,6 +233,9 @@ def run_binary_class_gnn_baseline(
     logging.info(f'Dataset features on device: {data.x.device}')
     logging.info(f'Dataset Edge Index on device: {data.edge_index.device}')
 
+    if data.x.is_cuda:
+        data = data.cpu()
+
     logging.info(f'Training set size: {split_idx["train"].size()}')
     logging.info(f'Validation set size: {split_idx["valid"].size()}')
     logging.info(f'Testing set size: {split_idx["test"].size()}')
@@ -179,6 +249,7 @@ def run_binary_class_gnn_baseline(
         num_workers=4,
         pin_memory=True,
         persistent_workers=True,
+        drop_last=True,
     )
     logging.info('Train loader created')
 
@@ -191,6 +262,7 @@ def run_binary_class_gnn_baseline(
         num_workers=4,
         pin_memory=True,
         persistent_workers=True,
+        drop_last=True,
     )
 
     logging.info('Valid loader created')
@@ -203,6 +275,7 @@ def run_binary_class_gnn_baseline(
         num_workers=4,
         pin_memory=True,
         persistent_workers=True,
+        drop_last=True,
     )
     logging.info('Test loader created')
 
@@ -214,7 +287,7 @@ def run_binary_class_gnn_baseline(
     patience_counter = 0
     logging.info('*** Training ***')
     for run in tqdm(range(model_arguments.runs), desc='Runs'):
-        model = Model(
+        gnn_model = Model(
             model_name=model_arguments.model,
             normalization=model_arguments.normalization,
             in_channels=data.num_features,
@@ -224,23 +297,62 @@ def run_binary_class_gnn_baseline(
             dropout=model_arguments.dropout,
             binary=True,
         ).to(device)
-        optimizer = torch.optim.AdamW(model.parameters(), lr=model_arguments.lr)
+        # TODO: Introduce paramater for text embedding dimension, i.e text_embedding_dimenaion = 256
+        text_embedding_dimension = 256
+        mlp_model = LabelPredictor(
+            in_dim=(model_arguments.embedding_dimension + text_embedding_dimension)
+        ).to(device)
+        model = torch.nn.ModuleList([gnn_model, mlp_model])
+        optimizer = torch.optim.AdamW(
+            model.parameters(),
+            lr=model_arguments.lr,
+        )
         loss_tuple_epoch_mse: List[Tuple[float, float, float, float, float]] = []
         best_val_per_epoch = float('inf')
         for epoch in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
             loss_ce, _ = train_(
-                model, train_loader, optimizer, model_arguments.training_method
+                model,
+                train_loader,
+                optimizer,
+                model_arguments.training_method,
+                embeddings_location,
+                embeddings_lookup_table,
             )
-            train_ce_loss, train_acc, _, _ = evaluate(model, train_loader, 'train_mask')
+            train_ce_loss, train_acc, _, _ = evaluate(
+                model,
+                train_loader,
+                'train_mask',
+                embeddings_location,
+                embeddings_lookup_table,
+            )
             valid_ce_loss, valid_acc, valid_mean_acc, _ = evaluate(
-                model, val_loader, 'valid_mask'
+                model,
+                val_loader,
+                'valid_mask',
+                embeddings_location,
+                embeddings_lookup_table,
             )
             (
                 test_ce_loss,
                 test_acc,
                 test_mean_acc,
                 test_random_acc,
-            ) = evaluate(model, test_loader, 'test_mask')
+            ) = evaluate(
+                model,
+                test_loader,
+                'test_mask',
+                embeddings_location,
+                embeddings_lookup_table,
+            )
+            wandb.log(
+                {
+                    'epoch': epoch,
+                    'train_acc': train_acc,
+                    'val_acc': valid_acc,
+                    'val_loss': valid_ce_loss,
+                    'test_acc': test_acc,
+                }
+            )
             result = (
                 train_acc,
                 valid_acc,
@@ -261,13 +373,12 @@ def run_binary_class_gnn_baseline(
             )
             if valid_ce_loss < best_val_per_epoch:
                 best_val_per_epoch = valid_ce_loss
-                best_state_dict = model.state_dict()
                 patience_counter = 0
             else:
                 patience_counter += 1
                 if patience_counter >= patience:
                     logging.info(f'Early stopping at epoch {epoch}')
-                    logging.info(f'Best validation loss {global_best_val_loss}')
+                    logging.info(f'Best epoch validation loss {best_val_per_epoch}')
                     break
 
         if best_val_per_epoch < global_best_val_loss:
@@ -283,12 +394,12 @@ def run_binary_class_gnn_baseline(
     logging.info(f'Model: {model_arguments} weights saved to: {best_model_path}')
     logging.info('*** Statistics ***')
     logging.info(logger.get_statistics(metric=Metric.acc, higher_is_better=True))
-    logging.info(logger.get_avg_statistics(metric=Metric.acc, higher_is_better=True))
-    logging.info('Constructing plots')
-    plot_avg_loss(
-        loss_tuple_run_mse, model_arguments.model, Scoring.acc, 'loss_plot.png'
-    )
-    logging.info('Saving pkl of results')
-    save_loss_results(
-        loss_tuple_run_mse, model_arguments.model, 'binary_classification'
-    )
+    # logging.info(logger.get_avg_statistics(metric=Metric.acc, higher_is_better=True))
+    # logging.info('Constructing plots')
+    # plot_avg_loss(
+    #     loss_tuple_run_mse, model_arguments.model, Scoring.acc, 'loss_plot.png'
+    # )
+    # logging.info('Saving pkl of results')
+    # save_loss_results(
+    #     loss_tuple_run_mse, model_arguments.model, 'binary_classification'
+    # )

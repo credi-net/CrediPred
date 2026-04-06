@@ -121,8 +121,11 @@ class WebGraphDataset(InMemoryDataset, ABC):
             self.split_dir = pathlib.Path()
 
         self._custome_processed_dir = processed_dir
+        logging.info(f'Processed Directory: {self._custome_processed_dir}')
         super().__init__(root, transform, pre_transform)
-        self.data, self.slices = torch.load(self.processed_paths[0], weights_only=False)
+        self.data, self.slices = torch.load(
+            self.processed_paths[0], map_location='cpu', weights_only=False
+        )
 
     @property
     def raw_dir(self) -> str:
@@ -166,6 +169,9 @@ class WebGraphDataset(InMemoryDataset, ABC):
             index_col=0,
             encoders=self.encoding,
         )
+
+        if x_full is not None:
+            x_full = x_full.to('cpu')
         logging.info('***Feature Matrix Done***')
 
         score, idx_dict = self._process_targets_and_splits(
@@ -181,13 +187,16 @@ class WebGraphDataset(InMemoryDataset, ABC):
             mapping=mapping,
             encoders=None,
         )
+        edge_index = edge_index.to('cpu')
         logging.info('***Edge Matrix Constructed***')
 
         if self.force_undirected:
             logging.info('Converting edge index to undirected.')
             edge_index = to_undirected(edge_index)
 
-        data = Data(x=x_full, y=score, edge_index=edge_index, edge_attr=edge_attr)
+        data = Data(x=x_full, y=score, edge_index=edge_index, edge_attr=edge_attr).to(
+            'cpu'
+        )
 
         labeled_mask = score != -1.0
         data.labeled_mask = labeled_mask.detach().clone().bool()
@@ -323,6 +332,7 @@ class WebGraphDatasetRegression(WebGraphDataset):
         score = torch.tensor(
             df_target[self.target_col].astype('float32').fillna(-1).values,
             dtype=torch.float,
+            device='cpu',
         )
         logging.info(f'Size of score vector: {score.size()}')
 
@@ -481,6 +491,7 @@ class WebGraphDatasetBinaryDownsample(WebGraphDataset):
         score = torch.tensor(
             score_values,
             dtype=torch.long,
+            device='cpu',
         )
         logging.info(f'Size of score vector: {score.size()}')
 

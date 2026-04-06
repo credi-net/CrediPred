@@ -3,22 +3,22 @@ import logging
 import pathlib
 from typing import Dict, cast
 
+import wandb
+
 from credipred.dataset.dataset import DATASETS, WebGraphDataset
 from credipred.encoders.encoder import Encoder
 from credipred.encoders.encoders import ENCODERS
-from credipred.experiments.gnn_experiments.gnn_experiment import (
-    run_gnn_baseline,
-)
-from credipred.experiments.gnn_experiments.gnn_experiment_binary_labels import (
-    run_binary_class_gnn_baseline,
+from credipred.experiments.end_to_end.end_to_end_experiment_binary import (
+    run_end_to_end_binary_classification,
 )
 from credipred.utils.args import MetaArguments, parse_args
 from credipred.utils.logger import setup_logging
 from credipred.utils.path import get_root_dir
+from credipred.utils.readers import get_embeddings_lookup
 from credipred.utils.seed import seed_everything
 
 parser = argparse.ArgumentParser(
-    description='GNN Experiments.',
+    description='End-To-End MLP(TEXT + GNN) Experiments.',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
 parser.add_argument(
@@ -48,6 +48,7 @@ def build_experiment_dataset(
 
 
 def main() -> None:
+    wandb.init()
     root = get_root_dir()
     args = parser.parse_args()
     config_file_path = root / args.config_file
@@ -56,9 +57,7 @@ def main() -> None:
     seed_everything(meta_args.global_seed)
 
     encoding_dict = {
-        idx: ENCODERS.build(
-            {'type': val, 'dimension': meta_args.initalization_dimension}
-        )
+        idx: ENCODERS.build({'type': val, 'dimension': 64})
         for idx, val in meta_args.encoder_dict.items()
     }
     logging.info(f'Encoding Dictionary: {encoding_dict}')
@@ -71,22 +70,33 @@ def main() -> None:
     weights_path = (
         root / cast(str, meta_args.weights_directory) / f'{meta_args.target_col}'
     )
+
+    if meta_args.embedding_location:
+        embeddings_location = pathlib.Path(cast(str, meta_args.embedding_location))
+    else:
+        embeddings_location = pathlib.Path()
+
+    logging.info(f'Embedding location: {embeddings_location}')
+    embedding_lookup = cast(str, meta_args.embedding_lookup)
+
+    embeddings_lookup_table = get_embeddings_lookup(
+        str(embeddings_location / embedding_lookup)
+    )
     for experiment, experiment_arg in experiment_args.exp_args.items():
         logging.info(f'\n**Running**: {experiment}')
-        if meta_args.is_regression:
-            run_gnn_baseline(
-                experiment_arg.data_args,
-                experiment_arg.model_args,
-                weights_path,
-                dataset,
-            )
-        else:
-            run_binary_class_gnn_baseline(
-                experiment_arg.data_args,
-                experiment_arg.model_args,
-                weights_path,
-                dataset,
-            )
+        m_args = experiment_arg.model_args
+        for key, value in wandb.config.items():
+            if hasattr(m_args, key):
+                setattr(m_args, key, value)
+                logging.info(f'Sweep Overwrite: {key} = {value}')
+        run_end_to_end_binary_classification(
+            experiment_arg.data_args,
+            m_args,
+            weights_path,
+            dataset,
+            embeddings_location,
+            embeddings_lookup_table,
+        )
 
     logging.info('***Experiments Complete.***')
 
