@@ -68,7 +68,7 @@ def main() -> None:
     setup_logging('KDD_Filtering.log')
     root = get_scratch()
     split_file = root / args.split_file
-    domains_annotated_file = root / args.domains_annoated
+    domains_annotated_file = root / args.domains_annotated
     output_dir = root / args.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
 
