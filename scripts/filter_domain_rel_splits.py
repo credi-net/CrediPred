@@ -4,6 +4,7 @@ import logging
 import numpy as np
 import pandas as pd
 
+from credipred.utils.domain_handler import reverse_domain
 from credipred.utils.logger import setup_logging
 from credipred.utils.path import get_scratch
 
@@ -69,8 +70,11 @@ def get_statistics(
     annotated_domains = labels_annotation_df['domain'].unique()
 
     mask = split_df['domain'].isin(annotated_domains)
+    mask_reverse = (
+        split_df['domain'].apply(lambda x: reverse_domain(x)).isin(annotated_domains)
+    )
 
-    count = split_df.loc[mask, 'domain'].nunique()
+    count = split_df.loc[mask | mask_reverse, 'domain'].nunique()
 
     stats = {'domains_occuring_in_annotation': [count]}
 
@@ -106,7 +110,11 @@ def main() -> None:
         split_df['label'] = np.where(split_df[valid_mask], 1, 0)
 
     else:
-        split_df = split_df[split_df['domain'].isin(valid_domains)]
+        original_condition = split_df['domain'].isin(valid_domains)
+        condition_reverse = (
+            split_df['domain'].apply(lambda x: reverse_domain(x)).isin(valid_domains)
+        )
+        split_df = split_df[original_condition | condition_reverse]
 
     output_path = output_dir / f'filtered_{args.category}_{split_file.name}'
     split_df.to_parquet(output_path)
