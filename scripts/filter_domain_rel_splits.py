@@ -110,9 +110,7 @@ def main() -> None:
     )
 
     if args.convert_labels:
-        split_df['label'] = np.where(
-            split_df[original_condition | condition_reverse], 1, 0
-        )
+        split_df['label'] = np.where(original_condition | condition_reverse, 1, 0)
 
     else:
         split_df = split_df[original_condition | condition_reverse]
