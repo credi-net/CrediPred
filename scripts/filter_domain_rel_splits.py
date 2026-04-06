@@ -75,7 +75,7 @@ def get_statistics(
 
     stats['domains_occuring_in_labels'] = count
 
-    return pd.DataFrame(stats)
+    return pd.DataFrame.from_dict(stats)
 
 
 def main() -> None:
