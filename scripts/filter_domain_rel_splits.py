@@ -80,7 +80,7 @@ def main() -> None:
 
     # Find domains where at least one of these columns is 1.
     is_in_category = domains_annoated_df[relevant_cols].any(axis=1)
-    valid_domains = domains_annoated_df[is_in_category, 'domain'].unique()
+    valid_domains = domains_annoated_df.loc[is_in_category, 'domain'].unique()
 
     if args.convert_labels:
         valid_mask = split_df['domain'].isin(valid_domains)
