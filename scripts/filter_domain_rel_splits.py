@@ -38,7 +38,7 @@ parser.add_argument(
     choices=['general', 'phishing', 'misinfo', 'malware'],
 )
 parser.add_argument(
-    '--convert_labels',
+    '--convert-labels',
     action='store_true',
     help='File containing annotated labels.',
 )
@@ -100,7 +100,7 @@ def main() -> None:
     logging.info(f'Annotation Dataframe: {domains_annotated_df.head()}')
 
     # Find domains where at least one of these columns is 1.
-    is_in_category = domains_annotated_df[relevant_cols].any(axis=1)
+    is_in_category = domains_annotated_df[relevant_cols].notna().any(axis=1)
     valid_domains = domains_annotated_df.loc[is_in_category, 'domain'].unique()
 
     logging.info(f'Stats: {get_statistics(split_df, domains_annotated_df).head()}')
