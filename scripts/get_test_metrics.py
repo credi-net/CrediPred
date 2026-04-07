@@ -79,7 +79,7 @@ def get_binary_metrics(
         persistent_workers=True,
     )
     num_nodes = data.num_nodes
-    all_preds = torch.zeros(num_nodes, 1)
+    all_preds = torch.zeros(num_nodes, 2)
     model.eval()
     with torch.no_grad():
         for batch in tqdm(loader, desc=f'Inference'):
