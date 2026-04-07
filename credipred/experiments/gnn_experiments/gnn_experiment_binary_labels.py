@@ -151,7 +151,7 @@ def run_binary_class_gnn_baseline(
     weight_directory: Path,
     dataset: WebGraphDataset,
 ) -> None:
-    data = dataset[0]
+    data = dataset[0].cpu()
     split_idx = dataset.get_idx_split()
     logging.info(
         'Setting up training for task of: %s on model: %s',
@@ -179,6 +179,7 @@ def run_binary_class_gnn_baseline(
         num_workers=4,
         pin_memory=True,
         persistent_workers=True,
+        drop_last=True,
     )
     logging.info('Train loader created')
 
@@ -191,6 +192,7 @@ def run_binary_class_gnn_baseline(
         num_workers=4,
         pin_memory=True,
         persistent_workers=True,
+        drop_last=True,
     )
 
     logging.info('Valid loader created')
@@ -203,6 +205,7 @@ def run_binary_class_gnn_baseline(
         num_workers=4,
         pin_memory=True,
         persistent_workers=True,
+        drop_last=True,
     )
     logging.info('Test loader created')
 
@@ -283,7 +286,6 @@ def run_binary_class_gnn_baseline(
     logging.info(f'Model: {model_arguments} weights saved to: {best_model_path}')
     logging.info('*** Statistics ***')
     logging.info(logger.get_statistics(metric=Metric.acc, higher_is_better=True))
-    logging.info(logger.get_avg_statistics(metric=Metric.acc, higher_is_better=True))
     logging.info('Constructing plots')
     plot_avg_loss(
         loss_tuple_run_mse, model_arguments.model, Scoring.acc, 'loss_plot.png'
