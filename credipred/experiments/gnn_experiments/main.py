@@ -2,6 +2,8 @@ import argparse
 import logging
 from typing import Dict, List, cast
 
+import wandb
+
 from credipred.dataset.squashed_dataset import (
     SquashedBinaryDatasetAllGlobalSplits,
     SquashedDatasetGlobalSplit,
@@ -24,6 +26,18 @@ from credipred.experiments.gnn_experiments.gnn_experiment import (
 )
 from credipred.experiments.gnn_experiments.gnn_experiment_binary_labels import (
     run_binary_class_gnn_baseline,
+)
+from credipred.experiments.gnn_experiments.regression_uq_experiment import (
+    run_regression_uq,
+)
+from credipred.experiments.gnn_experiments.topology_correction_experiment import (
+    run_topology_correction,
+)
+from credipred.experiments.gnn_experiments.classification_uq_experiment import (
+    run_classification_uq,
+)
+from credipred.experiments.gnn_experiments.uncertainty_gat_experiment import (
+    run_uncertainty_gat,
 )
 from credipred.utils.args import parse_args
 from credipred.utils.logger import setup_logging
@@ -56,6 +70,26 @@ parser.add_argument(
     default='configs/gnn/base.yaml',
     help='Path to yaml configuration file to use',
 )
+parser.add_argument(
+    '--quantile',
+    action='store_true',
+    help='Train quantile regression model with CQR evaluation.',
+)
+parser.add_argument(
+    '--uncertainty-gat',
+    action='store_true',
+    help='Train uncertainty-weighted GAT (requires pre-trained base quantile model).',
+)
+parser.add_argument(
+    '--topology-correction',
+    action='store_true',
+    help='Post-hoc topology correction GNN (requires pre-trained base quantile model).',
+)
+parser.add_argument(
+    '--classification-uq',
+    action='store_true',
+    help='Classification UQ via conformal prediction + ConfGNN (requires pre-trained base classification model).',
+)
 
 
 def main() -> None:
@@ -65,6 +99,30 @@ def main() -> None:
     meta_args, experiment_args = parse_args(config_file_path)
     setup_logging(meta_args.log_file_path)
     seed_everything(meta_args.global_seed)
+
+    # Determine mode for wandb
+    if args.quantile:
+        mode = 'quantile'
+    elif args.uncertainty_gat:
+        mode = 'uncertainty_gat'
+    elif args.topology_correction:
+        mode = 'topology_correction'
+    elif args.classification_uq:
+        mode = 'classification_uq'
+    elif args.binary_classification:
+        mode = 'binary_classification'
+    else:
+        mode = 'mae'
+
+    wandb.init(
+        project='CrediPred-regression-uq',
+        name=f'{mode}-{meta_args.target_col}',
+        config={
+            'mode': mode,
+            'target_col': meta_args.target_col,
+            'config_file': args.config_file,
+        },
+    )
 
     encoder_classes: Dict[str, Encoder] = {
         'RNI': RNIEncoder(64),  # TODO: Set this a paramater
@@ -175,32 +233,65 @@ def main() -> None:
 
     for experiment, experiment_arg in experiment_args.exp_args.items():
         logging.info(f'\n**Running**: {experiment}')
-        if not args.binary_classification:
-            run_gnn_baseline(
+        weight_dir = (
+            root
+            / cast(str, meta_args.weights_directory)
+            / f'{meta_args.target_col}'
+        )
+
+        if args.classification_uq:
+            run_classification_uq(
                 experiment_arg.data_args,
                 experiment_arg.model_args,
-                root
-                / cast(str, meta_args.weights_directory)
-                / f'{meta_args.target_col}',
+                weight_dir,
                 dataset,
             )
-        else:
+        elif args.topology_correction:
+            run_topology_correction(
+                experiment_arg.data_args,
+                experiment_arg.model_args,
+                weight_dir,
+                dataset,
+            )
+        elif args.uncertainty_gat:
+            run_uncertainty_gat(
+                experiment_arg.data_args,
+                experiment_arg.model_args,
+                weight_dir,
+                dataset,
+            )
+        elif args.quantile:
+            run_regression_uq(
+                experiment_arg.data_args,
+                experiment_arg.model_args,
+                weight_dir,
+                dataset,
+            )
+        elif args.binary_classification:
             run_binary_class_gnn_baseline(
                 experiment_arg.data_args,
                 experiment_arg.model_args,
-                root
-                / cast(str, meta_args.weights_directory)
-                / f'{meta_args.target_col}',
+                weight_dir,
+                dataset,
+            )
+        else:
+            run_gnn_baseline(
+                experiment_arg.data_args,
+                experiment_arg.model_args,
+                weight_dir,
                 dataset,
             )
 
-    results = load_all_loss_tuples()
-    logging.info('Constructing Plots, across models')
-    plot_metric_across_models(results)
-    logging.info('Constructing Plots, metric per-encoder')
-    plot_metric_per_encoder(results)
-    logging.info('Constructing Plots, model per-encoder')
-    plot_model_per_encoder(results)
+    if not args.quantile and not args.uncertainty_gat and not args.topology_correction:
+        results = load_all_loss_tuples()
+        logging.info('Constructing Plots, across models')
+        plot_metric_across_models(results)
+        logging.info('Constructing Plots, metric per-encoder')
+        plot_metric_per_encoder(results)
+        logging.info('Constructing Plots, model per-encoder')
+        plot_model_per_encoder(results)
+
+    wandb.finish()
 
 
 if __name__ == '__main__':

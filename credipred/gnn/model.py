@@ -43,10 +43,12 @@ class Model(torch.nn.Module):
         num_layers: int,
         dropout: float,
         binary: bool,
+        prediction_dim: int = 1,
     ):
         super().__init__()
         self.model_name = model_name
         self.binary = binary
+        self.prediction_dim = prediction_dim
         normalization_cls = self.normalization_map[normalization]
         self.input_linear = nn.Linear(
             in_features=in_channels, out_features=hidden_channels
@@ -69,7 +71,7 @@ class Model(torch.nn.Module):
         self.output_linear = nn.Linear(
             in_features=hidden_channels, out_features=out_channels
         )
-        self.node_predictor = NodePredictor(in_dim=out_channels, out_dim=1)
+        self.node_predictor = NodePredictor(in_dim=out_channels, out_dim=prediction_dim)
         self.label_predictor = LabelPredictor(in_dim=out_channels, out_dim=2)
 
     def forward(self, x: Tensor, edge_index: Tensor | None = None) -> Tensor:

@@ -207,6 +207,42 @@ class ModelArguments:
     log_steps: int = field(
         default=50, metadata={'help': 'Step mod epoch to print logger.'}
     )
+    quantile_alpha: float = field(
+        default=0.05,
+        metadata={'help': 'Miscoverage rate for quantile regression (e.g. 0.05 for 95% coverage).'},
+    )
+    conformal_alpha: float = field(
+        default=0.1,
+        metadata={'help': 'Miscoverage rate for conformal prediction (e.g. 0.1 for 90% coverage).'},
+    )
+    confgnn_epochs: int = field(
+        default=2000,
+        metadata={'help': 'Number of epochs for ConfGNN correction training.'},
+    )
+    confgnn_pred_only_epochs: int = field(
+        default=1000,
+        metadata={'help': 'Number of epochs with prediction loss only before adding size loss.'},
+    )
+    confgnn_lr: float = field(
+        default=0.001,
+        metadata={'help': 'Learning rate for ConfGNN correction model.'},
+    )
+    confgnn_tau: float = field(
+        default=0.5,
+        metadata={'help': 'Temperature for differentiable size loss.'},
+    )
+    confgnn_target_size: float = field(
+        default=1.0,
+        metadata={'help': 'Target prediction set size for size loss.'},
+    )
+    confgnn_size_loss_weight: float = field(
+        default=0.1,
+        metadata={'help': 'Weight for size loss relative to prediction loss.'},
+    )
+    confgnn_reg_loss_weight: float = field(
+        default=1.0,
+        metadata={'help': 'Weight for regularization loss (deviation from base predictions).'},
+    )
 
     def __post_init__(self) -> None:
         if isinstance(self.training_method, str):

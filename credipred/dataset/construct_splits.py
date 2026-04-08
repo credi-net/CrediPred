@@ -67,7 +67,7 @@ def generate_splits(
     test_df = downsample_to_balance(test_df_raw)
     val_df = downsample_to_balance(val_df_raw)
 
-    output_dir = scratch_path / 'data' / 'splits' / 'balanced'
+    output_dir = scratch_path / 'data' / 'CrediBench' / 'dec2024'
     output_dir.mkdir(parents=True, exist_ok=True)
 
     train_df.to_parquet(output_dir / 'train_domains.parquet', index=False)
@@ -90,7 +90,7 @@ def main() -> None:
     setup_logging('generate_all_targets.log')
 
     domains_to_binary = get_full_dict()
-    paths = ['dec_2024_domain', 'nov2024_domain', 'oct2024_domain']
+    paths = ['CrediBench/dec2024']
 
     all_unique_domains = set()
 

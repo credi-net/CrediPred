@@ -1,0 +1,50 @@
+MetaArguments:
+  log_file_path: "logs/classification_uq/gat_classification_uq_domainrel_dec.log"
+  node_file: "../data/CrediBench/dec2024/vertices.csv"
+  edge_file: "../data/CrediBench/dec2024/edges.csv"
+  target_file: "../data/CrediBench/dec2024/targets_binary_weighted_loss_balanced.csv"
+  processed_location: "../data/CrediBench/dec2024/processed_dir/domainrel_binary"
+  weights_directory: "../data/dec_2024/weights_binary"
+  database_folder: "../data/CrediBench/dec2024"
+  split_folder: "../data/CrediBench/dec2024"
+  embedding_location: "../data/CrediBench/content_embedding/dec2024/embeddinggema-300m"
+  embedding_lookup: "dec2024_wetcontent_domains_index.pkl"
+  target_col: "weak_label"
+  target_index_name: "nid"
+  target_index_col: 0
+  edge_src_col: "src"
+  edge_dst_col: "dst"
+  index_col: 0
+  encoder_dict:
+    pre: PRE
+  is_scratch_location: true
+  global_seed: 42
+
+ExperimentArguments:
+  exp_args:
+    GAT:
+      model_args:
+        model: "GAT"
+        num_layers: 3
+        hidden_channels: 256
+        normalization: "BatchNorm"
+        num_neighbors: [30, 30, 30]
+        batch_size: 1024
+        embedding_dimension: 128
+        dropout: 0.1
+        lr: 0.001
+        weight_decay: 0.0000236
+        epochs: 100
+        runs: 1
+        device: 0
+        log_steps: 10
+        conformal_alpha: 0.05
+        confgnn_epochs: 500
+        confgnn_pred_only_epochs: 250
+        confgnn_lr: 0.001
+        confgnn_tau: 0.5
+        confgnn_target_size: 1.0
+        confgnn_size_loss_weight: 0.1
+      data_args:
+        task_name: "node-classification-uq"
+        is_regression: false
