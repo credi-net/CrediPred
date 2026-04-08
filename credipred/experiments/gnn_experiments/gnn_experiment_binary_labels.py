@@ -214,6 +214,14 @@ def run_binary_class_gnn_baseline(
     patience = model_arguments.patience
     patience_counter = 0
     logging.info('*** Training ***')
+    if model_arguments.model == 'GPS':
+        kwargs = {
+            'gps_head': 1,
+            'gps_attn_type': 'performer',
+            'gps_local_mpnn': 'gatedgcn',
+        }
+    else:
+        kwargs = {}
     for run in tqdm(range(model_arguments.runs), desc='Runs'):
         model = Model(
             model_name=model_arguments.model,
@@ -224,6 +232,7 @@ def run_binary_class_gnn_baseline(
             num_layers=model_arguments.num_layers,
             dropout=model_arguments.dropout,
             binary=True,
+            kwargs=kwargs,
         ).to(device)
         optimizer = torch.optim.AdamW(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch_mse: List[Tuple[float, float, float, float, float]] = []
