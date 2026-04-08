@@ -56,7 +56,6 @@ def get_binary_metrics(
     model.load_state_dict(torch.load(weight_path, map_location=device))
     logging.info('Model Loaded.')
     model.eval()
-    test_indices = torch.tensor(test_idx, dtype=torch.long)
 
     test_targets = dataset[0].y[test_idx]
     count_ones = 0
@@ -71,12 +70,12 @@ def get_binary_metrics(
 
     loader = NeighborLoader(
         data,
-        input_nodes=test_indices,
+        input_nodes=test_idx,
         num_neighbors=[30, 30, 30],
         batch_size=4096,
         shuffle=False,
-        num_workers=8,
-        persistent_workers=True,
+        num_workers=0,
+        persistent_workers=False,
     )
     num_nodes = data.num_nodes
     all_preds = torch.zeros(num_nodes, 2)
@@ -88,7 +87,7 @@ def get_binary_metrics(
             seed_nodes = batch.n_id[: batch.batch_size]
             all_preds[seed_nodes] = preds[: batch.batch_size].cpu()
 
-    test_logits = all_preds[test_indices]
+    test_logits = all_preds[test_idx]
 
     predicted_labels = torch.argmax(test_logits, dim=1)
     bcm = BinaryConfusionMatrix()
