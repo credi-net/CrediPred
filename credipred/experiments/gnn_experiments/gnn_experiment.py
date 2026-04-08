@@ -38,7 +38,7 @@ def train_(
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
         optimizer.zero_grad()
         batch = batch.to(device)
-        preds = model(batch.x, batch.edge_index).squeeze()
+        preds = model(batch.x, batch.edge_index, batch=None).squeeze()
         # Only compute loss on seed nodes (first batch_size nodes).
         n_seed = batch.batch_size
         seed_preds = preds[:n_seed]
@@ -79,7 +79,7 @@ def evaluate(
     all_targets = []
     for batch in loader:
         batch = batch.to(device)
-        preds = model(batch.x, batch.edge_index).squeeze()
+        preds = model(batch.x, batch.edge_index, batch=None).squeeze()
         targets = batch.y
         # Only evaluate seed nodes (first batch_size nodes) to avoid
         # double-counting nodes that appear as neighbors in other batches.
@@ -179,6 +179,14 @@ def run_gnn_baseline(
     patience = model_arguments.patience
     patience_counter = 0
     logging.info('*** Training ***')
+    if model_arguments.model == 'GPS':
+        kwargs = {
+            'gps_head': 4,
+            'gps_attn_type': 'performer',
+            'gps_local_mpnn': 'gin',
+        }
+    else:
+        kwargs = {}
     for run in tqdm(range(model_arguments.runs), desc='Runs'):
         model = Model(
             model_name=model_arguments.model,
@@ -189,6 +197,7 @@ def run_gnn_baseline(
             num_layers=model_arguments.num_layers,
             dropout=model_arguments.dropout,
             binary=False,
+            **kwargs,
         ).to(device)
         optimizer = torch.optim.AdamW(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch_mse: List[Tuple[float, float, float, float, float]] = []
