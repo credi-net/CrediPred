@@ -161,8 +161,9 @@ def get_binary_metrics(
     logging.info(f'PR-AUC (Average Precision): {pr_auc:.4f}')
 
     # --- Uncertainty Quantification ---
-    base_ece = compute_ece(test_logits.numpy(), test_targets_np)
-    base_nll = compute_nll(test_logits.numpy(), test_targets_np)
+    test_probs = torch.exp(test_logits)
+    base_ece = compute_ece(test_probs.numpy(), test_targets_np)
+    base_nll = compute_nll(test_probs.numpy(), test_targets_np)
     logging.info('  ECE:      %.4f  (lower = better calibrated)', base_ece)
     logging.info('  NLL:      %.4f  (lower = better probability estimates)', base_nll)
 
