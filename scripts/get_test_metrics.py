@@ -99,14 +99,14 @@ def get_binary_metrics(
 
     precision = tp / (tp + fp)
     recall = tp / (tp + fn)
-    accuracy = tp + tn / (tp + tn + fp + fn)
+    accuracy = (tp + tn) / (tp + tn + fp + fn)
 
     f1_score = 2 * ((precision * recall) / (precision + recall))
 
     logging.info(f'TP: {tp}, FP: {fp}, TN: {tn}, FN: {fn}\n')
     logging.info(f'Accuracy: {accuracy}')
-    logging.info(f'Recall: {precision}')
-    logging.info(f'Precision: {recall}')
+    logging.info(f'Recall: {recall}')
+    logging.info(f'Precision: {precision}')
     logging.info(f'f1_score: {f1_score}')
 
     test_targets_np = test_targets.numpy()
