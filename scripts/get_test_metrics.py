@@ -110,9 +110,10 @@ def get_binary_metrics(
 
     test_targets_np = test_targets.numpy()
     test_probs = torch.exp(test_logits[:, 1]).numpy()
+    test_logits_np = test_logits.numpy()
 
-    roc_auc = roc_auc_score(test_targets_np, test_probs)
-    pr_auc = average_precision_score(test_targets_np, test_probs)
+    roc_auc = roc_auc_score(test_targets_np, test_logits_np)
+    pr_auc = average_precision_score(test_targets_np, test_logits_np)
 
     logging.info(f'ROC-AUC: {roc_auc:.4f}')
     logging.info(f'PR-AUC (Average Precision): {pr_auc:.4f}')
