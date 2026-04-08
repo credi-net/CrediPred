@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 from typing import Dict, cast
 
+import numpy as np
 import torch
 from sklearn.metrics import average_precision_score, roc_auc_score
 from torch_geometric.loader import NeighborLoader
@@ -28,6 +29,47 @@ parser.add_argument(
     default='configs/gnn/base.yaml',
     help='Path to yaml configuration file to use',
 )
+
+
+def compute_ece(smx: np.ndarray, labels: np.ndarray, n_bins: int = 15) -> float:
+    """Expected Calibration Error (ECE).
+
+    Measures how well predicted probabilities match actual correctness.
+    Bins samples by confidence (max softmax prob), computes
+    |accuracy - confidence| per bin, weighted by bin size.
+
+    ECE = sum_b (|B_b| / N) * |acc(B_b) - conf(B_b)|
+
+    Lower is better. 0 = perfectly calibrated.
+    """
+    confidences = smx.max(axis=1)
+    predictions = smx.argmax(axis=1)
+    accuracies = (predictions == labels).astype(float)
+
+    bin_boundaries = np.linspace(0, 1, n_bins + 1)
+    ece = 0.0
+    for i in range(n_bins):
+        mask = (confidences > bin_boundaries[i]) & (
+            confidences <= bin_boundaries[i + 1]
+        )
+        if mask.sum() == 0:
+            continue
+        bin_acc = accuracies[mask].mean()
+        bin_conf = confidences[mask].mean()
+        ece += (mask.sum() / len(labels)) * abs(bin_acc - bin_conf)
+    return ece
+
+
+def compute_nll(smx: np.ndarray, labels: np.ndarray) -> float:
+    """Negative Log-Likelihood (NLL).
+
+    NLL = -mean(log(p(y_true)))
+
+    Measures quality of predicted probability for the true class.
+    Lower is better. Equivalent to cross-entropy on test set.
+    """
+    probs_clipped = np.clip(smx, 1e-7, 1.0)
+    return float(-np.log(probs_clipped[np.arange(len(labels)), labels]).mean())
 
 
 def get_binary_metrics(
@@ -117,6 +159,12 @@ def get_binary_metrics(
 
     logging.info(f'ROC-AUC: {roc_auc:.4f}')
     logging.info(f'PR-AUC (Average Precision): {pr_auc:.4f}')
+
+    # --- Uncertainty Quantification ---
+    base_ece = compute_ece(test_logits.numpy(), test_targets_np)
+    base_nll = compute_nll(test_logits.numpy(), test_targets_np)
+    logging.info('  ECE:      %.4f  (lower = better calibrated)', base_ece)
+    logging.info('  NLL:      %.4f  (lower = better probability estimates)', base_nll)
 
 
 def build_experiment_dataset(
