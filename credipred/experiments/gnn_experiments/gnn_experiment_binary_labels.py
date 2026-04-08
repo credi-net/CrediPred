@@ -216,9 +216,9 @@ def run_binary_class_gnn_baseline(
     logging.info('*** Training ***')
     if model_arguments.model == 'GPS':
         kwargs = {
-            'gps_head': 1,
+            'gps_head': 4,
             'gps_attn_type': 'performer',
-            'gps_local_mpnn': 'gatedgcn',
+            'gps_local_mpnn': 'gin',
         }
     else:
         kwargs = {}
