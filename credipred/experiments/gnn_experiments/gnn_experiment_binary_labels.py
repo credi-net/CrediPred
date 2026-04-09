@@ -12,8 +12,6 @@ from credipred.gnn.model import Model
 from credipred.utils.args import DataArguments, ModelArguments
 from credipred.utils.enums import Metric, TrainingMethods
 from credipred.utils.logger import Logger
-from credipred.utils.plot import Scoring, plot_avg_loss
-from credipred.utils.save import save_loss_results
 
 
 def train_(
@@ -151,7 +149,7 @@ def run_binary_class_gnn_baseline(
     weight_directory: Path,
     dataset: WebGraphDataset,
 ) -> None:
-    data = dataset[0]
+    data = dataset[0].cpu()
     split_idx = dataset.get_idx_split()
     logging.info(
         'Setting up training for task of: %s on model: %s',
@@ -179,6 +177,7 @@ def run_binary_class_gnn_baseline(
         num_workers=4,
         pin_memory=True,
         persistent_workers=True,
+        drop_last=True,
     )
     logging.info('Train loader created')
 
@@ -191,6 +190,7 @@ def run_binary_class_gnn_baseline(
         num_workers=4,
         pin_memory=True,
         persistent_workers=True,
+        drop_last=True,
     )
 
     logging.info('Valid loader created')
@@ -203,6 +203,7 @@ def run_binary_class_gnn_baseline(
         num_workers=4,
         pin_memory=True,
         persistent_workers=True,
+        drop_last=True,
     )
     logging.info('Test loader created')
 
@@ -211,9 +212,9 @@ def run_binary_class_gnn_baseline(
     global_best_val_loss = float('inf')
     best_state_dict = None
     patience = model_arguments.patience
-    patience_counter = 0
     logging.info('*** Training ***')
     for run in tqdm(range(model_arguments.runs), desc='Runs'):
+        patience_counter = 0
         model = Model(
             model_name=model_arguments.model,
             normalization=model_arguments.normalization,
@@ -283,12 +284,3 @@ def run_binary_class_gnn_baseline(
     logging.info(f'Model: {model_arguments} weights saved to: {best_model_path}')
     logging.info('*** Statistics ***')
     logging.info(logger.get_statistics(metric=Metric.acc, higher_is_better=True))
-    logging.info(logger.get_avg_statistics(metric=Metric.acc, higher_is_better=True))
-    logging.info('Constructing plots')
-    plot_avg_loss(
-        loss_tuple_run_mse, model_arguments.model, Scoring.acc, 'loss_plot.png'
-    )
-    logging.info('Saving pkl of results')
-    save_loss_results(
-        loss_tuple_run_mse, model_arguments.model, 'binary_classification'
-    )
