@@ -110,7 +110,7 @@ def get_binary_metrics(
     logging.info('Model Loaded.')
     model.eval()
 
-    if category_filter_test == 'none':
+    if category_filter_test != 'none':
         domain_rel_annotations_dict = pickle.load(
             open(annotation_dir / 'domain_rel_annotations_dict.pkl', 'rb')
         )
