@@ -212,9 +212,9 @@ def run_binary_class_gnn_baseline(
     global_best_val_loss = float('inf')
     best_state_dict = None
     patience = model_arguments.patience
-    patience_counter = 0
     logging.info('*** Training ***')
     for run in tqdm(range(model_arguments.runs), desc='Runs'):
+        patience_counter = 0
         model = Model(
             model_name=model_arguments.model,
             normalization=model_arguments.normalization,
