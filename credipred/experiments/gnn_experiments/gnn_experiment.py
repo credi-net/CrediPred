@@ -174,10 +174,8 @@ def run_gnn_baseline(
     loss_tuple_run_r2: List[List[Tuple[float, float, float]]] = []
     final_avg_preds: List[List[float]] = []
     final_avg_targets: List[List[float]] = []
-    global_best_val_loss = float('inf')
     best_state_dict = None
     patience = model_arguments.patience
-    patience_counter = 0
     logging.info('*** Training ***')
     if model_arguments.model == 'GPS':
         kwargs = {
@@ -188,6 +186,8 @@ def run_gnn_baseline(
     else:
         kwargs = {}
     for run in tqdm(range(model_arguments.runs), desc='Runs'):
+        global_best_val_loss = float('inf')
+        patience_counter = 0
         model = Model(
             model_name=model_arguments.model,
             normalization=model_arguments.normalization,
