@@ -10,6 +10,7 @@ from torch_geometric.nn import (
     GPSConv,
     ResGatedGraphConv,
     SAGEConv,
+    TransformerConv,
 )
 
 NormalizationType = Union[Type[nn.Identity], Type[nn.LayerNorm], Type[nn.BatchNorm1d]]
@@ -193,6 +194,58 @@ class FFModule(nn.Module):
 
     def forward(self, x: Tensor, edge_index: Tensor) -> Tensor:
         x = self.feed_forward_module(x)
+        return x
+
+
+class GraphTransformerModule(nn.Module):
+    """Graph Transformer layer using PyG's TransformerConv.
+
+    Standard post-norm Graph Transformer architecture:
+        h = Attention(x) + x; h = Norm(h)
+        out = FFN(h) + h; out = Norm(out)
+
+    Reference: Dwivedi & Bresson, "A Generalization of Transformer
+    Networks to Graphs" (2021), arXiv:2012.09699
+    """
+
+    def __init__(
+        self,
+        dim: int,
+        dropout: float,
+        heads: int = 4,
+    ):
+        super().__init__()
+        assert dim % heads == 0, f'dim ({dim}) must be divisible by heads ({heads})'
+        head_dim = dim // heads
+
+        self.conv = TransformerConv(
+            in_channels=dim,
+            out_channels=head_dim,
+            heads=heads,
+            concat=True,
+            dropout=dropout,
+        )
+        self.norm_attn = nn.LayerNorm(dim)
+        self.norm_ff = nn.LayerNorm(dim)
+        self.ffn = nn.Sequential(
+            nn.Linear(dim, dim * 2),
+            nn.ReLU(),
+            nn.Dropout(p=dropout),
+            nn.Linear(dim * 2, dim),
+            nn.Dropout(p=dropout),
+        )
+        self.dropout = nn.Dropout(p=dropout)
+
+    def forward(self, x: Tensor, edge_index: Tensor) -> Tensor:
+        # Multi-head attention + residual + post-norm
+        h = self.conv(x, edge_index)
+        h = self.dropout(h)
+        x = self.norm_attn(x + h)
+
+        # FFN + residual + post-norm
+        h = self.ffn(x)
+        x = self.norm_ff(x + h)
+
         return x
 
 
