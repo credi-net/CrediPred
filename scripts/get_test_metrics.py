@@ -1,5 +1,6 @@
 import argparse
 import logging
+import pickle
 from pathlib import Path
 from typing import Dict, cast
 
@@ -16,7 +17,7 @@ from credipred.encoders.encoders import ENCODERS
 from credipred.gnn.model import Model
 from credipred.utils.args import MetaArguments, ModelArguments, parse_args
 from credipred.utils.logger import setup_logging
-from credipred.utils.path import get_root_dir
+from credipred.utils.path import get_root_dir, get_scratch
 from credipred.utils.seed import seed_everything
 
 parser = argparse.ArgumentParser(
@@ -28,6 +29,12 @@ parser.add_argument(
     type=str,
     default='configs/gnn/base.yaml',
     help='Path to yaml configuration file to use',
+)
+parser.add_argument(
+    '--category',
+    choices=['malware', 'general', 'phishing', 'misinfo', 'none'],
+    default='none',
+    help='Whether to use and what subcategory to filer.',
 )
 
 
@@ -76,6 +83,8 @@ def get_binary_metrics(
     model_arguments: ModelArguments,
     dataset: WebGraphDataset,
     weight_directory: Path,
+    annotation_dir: Path,
+    category_filter_test: str = 'none',
 ) -> None:
     get_root_dir()
     data = dataset[0]
@@ -84,6 +93,8 @@ def get_binary_metrics(
     logging.info(f'Device found: {device}')
     weight_path = weight_directory / f'{model_arguments.model}' / 'best_model.pt'
     test_idx = dataset.get_idx_split()['test']
+    domain_to_idx_mapping = dataset.get_mapping()
+    idx_to_domain_mapping = {v: k for k, v in domain_to_idx_mapping.items()}
     logging.info('Mapping returned.')
     model = Model(
         model_name=model_arguments.model,
@@ -98,6 +109,32 @@ def get_binary_metrics(
     model.load_state_dict(torch.load(weight_path, map_location=device))
     logging.info('Model Loaded.')
     model.eval()
+
+    if category_filter_test == 'none':
+        domain_rel_annotations_dict = pickle.load(
+            open(annotation_dir / 'domain_rel_annotations_dict.pkl', 'rb')
+        )
+        domain_rel_annotations_dict = {
+            k: v[0] for k, v in domain_rel_annotations_dict.items()
+        }
+        category_set = set(
+            [
+                k
+                for k, v in domain_rel_annotations_dict.items()
+                if v == category_filter_test
+            ]
+        )
+
+        mask = torch.tensor(
+            [
+                idx.item() in idx_to_domain_mapping
+                and idx_to_domain_mapping[idx.item()] in category_set
+                for idx in test_idx
+            ],
+            dtype=torch.bool,
+        )
+
+        test_idx = test_idx[mask]
 
     test_targets = dataset[0].y[test_idx]
     count_ones = 0
@@ -188,6 +225,7 @@ def build_experiment_dataset(
 
 def main() -> None:
     root = get_root_dir()
+    scratch = get_scratch()
     args = parser.parse_args()
     config_file_path = root / args.config_file
     meta_args, experiment_args = parse_args(config_file_path)
@@ -209,12 +247,16 @@ def main() -> None:
         root / cast(str, meta_args.weights_directory) / f'{meta_args.target_col}'
     )
 
+    annotation_dir = scratch / 'data' / 'splits' / 'hussien' / 'sub_category'
+
     for experiment, experiment_arg in experiment_args.exp_args.items():
         logging.info(f'\n**Running**: {experiment}')
         get_binary_metrics(
             experiment_arg.model_args,
             dataset,
             weight_directory,
+            annotation_dir,
+            args.category,
         )
 
 
