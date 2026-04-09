@@ -134,7 +134,12 @@ def get_binary_metrics(
             dtype=torch.bool,
         )
 
+        all_domains = len(test_idx)
         test_idx = test_idx[mask]
+        category_domains = len(test_idx)
+        logging.info(
+            f'Test indices filter within: {category_filter_test}. All domains in test set: {all_domains}, {category_filter_test} domains: {category_domains}'
+        )
 
     test_targets = dataset[0].y[test_idx]
     count_ones = 0
