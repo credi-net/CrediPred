@@ -209,12 +209,20 @@ def run_binary_class_gnn_baseline(
 
     logger = Logger(model_arguments.runs)
     loss_tuple_run_mse: List[List[Tuple[float, float, float, float, float]]] = []
-    global_best_val_loss = float('inf')
     best_state_dict = None
     patience = model_arguments.patience
-    patience_counter = 0
     logging.info('*** Training ***')
+    if model_arguments.model == 'GPS':
+        kwargs = {
+            'gps_head': 4,
+            'gps_attn_type': 'performer',
+            'gps_local_mpnn': 'gin',
+        }
+    else:
+        kwargs = {}
     for run in tqdm(range(model_arguments.runs), desc='Runs'):
+        global_best_val_loss = float('inf')
+        patience_counter = 0
         model = Model(
             model_name=model_arguments.model,
             normalization=model_arguments.normalization,
@@ -224,6 +232,7 @@ def run_binary_class_gnn_baseline(
             num_layers=model_arguments.num_layers,
             dropout=model_arguments.dropout,
             binary=True,
+            **kwargs,
         ).to(device)
         optimizer = torch.optim.AdamW(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch_mse: List[Tuple[float, float, float, float, float]] = []

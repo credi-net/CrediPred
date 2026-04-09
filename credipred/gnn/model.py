@@ -1,4 +1,4 @@
-from typing import Type, Union
+from typing import Any, Type, Union
 
 import torch
 from torch import Tensor, nn
@@ -9,6 +9,8 @@ from credipred.gnn.modules import (
     GATv2Module,
     GCNModule,
     GINModule,
+    GraphGPSModule,
+    GraphGPSResidualWrapper,
     LabelPredictor,
     NodePredictor,
     ResidualModuleWrapper,
@@ -26,6 +28,7 @@ class Model(torch.nn.Module):
         'GATv2': GATv2Module,
         'GIN': GINModule,
         'FF': FFModule,
+        'GPS': GraphGPSModule,
     }
     normalization_map: dict[str, NormalizationType] = {
         'none': torch.nn.Identity,
@@ -43,9 +46,11 @@ class Model(torch.nn.Module):
         num_layers: int,
         dropout: float,
         binary: bool,
+        **kwargs: Any,
     ):
         super().__init__()
         self.model_name = model_name
+        self.is_gps = model_name == 'GPS'
         self.binary = binary
         normalization_cls = self.normalization_map[normalization]
         self.input_linear = nn.Linear(
@@ -57,12 +62,22 @@ class Model(torch.nn.Module):
         self.re_modules = nn.ModuleList()
 
         for _ in range(num_layers):
-            residual_module = ResidualModuleWrapper(
-                module=self.modules[model_name],
-                normalization=normalization_cls,
-                dim=hidden_channels,
-                dropout=dropout,
-            )
+            if self.is_gps:
+                residual_module = GraphGPSResidualWrapper(
+                    normalization=normalization_cls,
+                    dim=hidden_channels,
+                    dropout=dropout,
+                    heads=kwargs['gps_head'],
+                    attn_type=kwargs['gps_attn_type'],
+                    local_mpnn_type=kwargs['gps_local_mpnn'],
+                )
+            else:
+                residual_module = ResidualModuleWrapper(
+                    module=self.modules[model_name],
+                    normalization=normalization_cls,
+                    dim=hidden_channels,
+                    dropout=dropout,
+                )
             self.re_modules.append(residual_module)
 
         self.output_normalization = normalization_cls(hidden_channels)
@@ -72,13 +87,17 @@ class Model(torch.nn.Module):
         self.node_predictor = NodePredictor(in_dim=out_channels, out_dim=1)
         self.label_predictor = LabelPredictor(in_dim=out_channels, out_dim=2)
 
-    def forward(self, x: Tensor, edge_index: Tensor | None = None) -> Tensor:
+    def forward(
+        self, x: Tensor, edge_index: Tensor | None = None, batch: Tensor | None = None
+    ) -> Tensor:
         x = self.input_linear(x)
         x = self.dropout(x)
         x = self.act(x)
 
         for re_module in self.re_modules:
-            if edge_index is not None:
+            if self.is_gps:
+                x = re_module(x, edge_index, batch)
+            elif edge_index is not None:
                 x = re_module(x, edge_index)
             else:
                 x = re_module(x)
@@ -91,13 +110,17 @@ class Model(torch.nn.Module):
             x = self.label_predictor(x)
         return x
 
-    def get_embeddings(self, x: Tensor, edge_index: Tensor | None = None) -> Tensor:
+    def get_embeddings(
+        self, x: Tensor, edge_index: Tensor | None = None, batch: Tensor | None = None
+    ) -> Tensor:
         x = self.input_linear(x)
         x = self.dropout(x)
         x = self.act(x)
 
         for re_module in self.re_modules:
-            if edge_index is not None:
+            if self.is_gps:
+                x = re_module(x, edge_index, batch)
+            elif edge_index is not None:
                 x = re_module(x, edge_index)
             else:
                 x = re_module(x)
