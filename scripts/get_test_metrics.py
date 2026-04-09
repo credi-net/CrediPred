@@ -16,6 +16,7 @@ from credipred.encoders.encoder import Encoder
 from credipred.encoders.encoders import ENCODERS
 from credipred.gnn.model import Model
 from credipred.utils.args import MetaArguments, ModelArguments, parse_args
+from credipred.utils.domain_handler import reverse_domain
 from credipred.utils.logger import setup_logging
 from credipred.utils.path import get_root_dir, get_scratch
 from credipred.utils.seed import seed_everything
@@ -128,7 +129,7 @@ def get_binary_metrics(
         mask = torch.tensor(
             [
                 idx.item() in idx_to_domain_mapping
-                and idx_to_domain_mapping[idx.item()] in category_set
+                and reverse_domain(idx_to_domain_mapping[idx.item()]) in category_set
                 for idx in test_idx
             ],
             dtype=torch.bool,
