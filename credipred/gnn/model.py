@@ -61,25 +61,28 @@ class Model(torch.nn.Module):
 
         self.re_modules = nn.ModuleList()
 
-        if self.is_gps:
-            residual_module = GraphGPSResidualWrapper(
-                normalization=normalization_cls,
-                dim=hidden_channels,
-                dropout=dropout,
-                heads=kwargs['gps_head'],
-                attn_type=kwargs['gps_attn_kwargs'],
-                local_mpnn_type=kwargs['gps_local_mpnn'],
-            )
-
-        else:
-            residual_module = ResidualModuleWrapper(
-                module=self.modules[model_name],
-                normalization=normalization_cls,
-                dim=hidden_channels,
-                dropout=dropout,
-            )
         for _ in range(num_layers):
-            self.re_modules.append(residual_module)
+            if self.is_gps:
+                self.re_modules.append(
+                    GraphGPSResidualWrapper(
+                        normalization=normalization_cls,
+                        dim=hidden_channels,
+                        dropout=dropout,
+                        heads=kwargs['gps_head'],
+                        attn_type=kwargs['gps_attn_type'],
+                        local_mpnn_type=kwargs['gps_local_mpnn'],
+                    )
+                )
+
+            else:
+                self.re_modules.append(
+                    ResidualModuleWrapper(
+                        module=self.modules[model_name],
+                        normalization=normalization_cls,
+                        dim=hidden_channels,
+                        dropout=dropout,
+                    )
+                )
 
         self.output_normalization = normalization_cls(hidden_channels)
         self.output_linear = nn.Linear(
