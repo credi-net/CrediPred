@@ -11,6 +11,7 @@ from credipred.gnn.modules import (
     GINModule,
     GraphGPSModule,
     GraphGPSResidualWrapper,
+    GraphTransformerModule,
     LabelPredictor,
     NodePredictor,
     ResidualModuleWrapper,
@@ -29,6 +30,7 @@ class Model(torch.nn.Module):
         'GIN': GINModule,
         'FF': FFModule,
         'GPS': GraphGPSModule,
+        'GT': GraphTransformerModule,
     }
     normalization_map: dict[str, NormalizationType] = {
         'none': torch.nn.Identity,
@@ -51,6 +53,7 @@ class Model(torch.nn.Module):
         super().__init__()
         self.model_name = model_name
         self.is_gps = model_name == 'GPS'
+        self.is_gt = model_name == 'GT'
         self.binary = binary
         normalization_cls = self.normalization_map[normalization]
         self.input_linear = nn.Linear(
@@ -73,7 +76,13 @@ class Model(torch.nn.Module):
                         local_mpnn_type=kwargs['gps_local_mpnn'],
                     )
                 )
-
+            elif self.is_gt:
+                self.re_modules.append(
+                    GraphTransformerModule(
+                        dim=hidden_channels,
+                        dropout=dropout,
+                    )
+                )
             else:
                 self.re_modules.append(
                     ResidualModuleWrapper(
