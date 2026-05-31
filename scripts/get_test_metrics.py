@@ -42,6 +42,15 @@ def get_binary_metrics(
     logging.info(f'Device found: {device}')
     weight_path = weight_directory / f'{model_arguments.model}' / 'best_model.pt'
     test_idx = dataset.get_idx_split()['test']
+    gps_info = {}
+    if model_arguments.model == 'GPS':
+        logging.info('Using additional parameters.')
+        gps_info = {
+            'gps_head': 1,
+            'gps_attn_type': 'performer',
+            'gps_local_mpnn': 'gatedgcn',
+        }
+    logging.info(f'kwargs: {gps_info}')
     logging.info('Mapping returned.')
     model = Model(
         model_name=model_arguments.model,
