@@ -61,6 +61,7 @@ def get_binary_metrics(
         num_layers=model_arguments.num_layers,
         dropout=model_arguments.dropout,
         binary=True,
+        **gps_info,
     ).to(device)
     model.load_state_dict(torch.load(weight_path, map_location=device))
     logging.info('Model Loaded.')
